@@ -278,7 +278,9 @@ public class BallChaseFollower {
         } else if (stateTimer.milliseconds() > TRAVEL_TIMEOUT_MS) {
             follower.breakFollowing();
             teleop = false;
-            enter(State.SCAN);   // stuck or blocked: re-plan from wherever we are
+            searchSteps++;                 // a timed-out travel = one failed approach
+            if (searchSteps >= SEARCH_MAX_STEPS) { finish(); return; }
+            enter(State.SCAN);             // stuck or blocked: re-plan from wherever we are
         }
     }
 

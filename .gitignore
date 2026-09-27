@@ -29,3 +29,7 @@ demo/frames/
 demo/tflite_test_v7f_int8.mp4
 # SSD v1 superseded by v2 - keep out of the repo
 neural-net/weights/best_limelight3a_ssd_mobilenetv2_300x300_v1.tflite
+
+# FTC SDK / Pedro jars staged locally by the lib CI (fetched from Maven Central)
+ftc_ball_chase_lib/lib/
+ftc_ball_chase_lib/out/

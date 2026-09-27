@@ -76,7 +76,7 @@ Tunables (all `public static`): `STOP_DIST`, `AIM_TOL_DEG`, `DRIVE_MIN_TX`,
 | State | Behavior |
 |-------|----------|
 | `SCAN` | stop and settle, average a few Limelight frames, **project each detection to a field position** via the Pedro pose; forget balls that should be visible but aren't |
-| `TRAVEL` | Pedro drives to `APPROACH_DIST` short of the nearest remembered ball, facing it |
+| `TRAVEL` | Pedro drives to `APPROACH_DIST` short of the nearest remembered ball, facing it; a drive that times out counts as one failed approach and re-plans, giving up after `SEARCH_MAX_STEPS` failed approaches |
 | `TURN` | face a close ball, or sweep when nothing is known |
 | `CHASE` | camera-only final approach (aim `tx`, range `ty`) — localization error no longer matters; coasts if the ball vanishes at the intake |
 | `PICKUP` | stop, intake, clear that ball from memory → back to `SCAN` |

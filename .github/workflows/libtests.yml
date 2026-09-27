@@ -13,9 +13,9 @@ jobs:
       run:
         working-directory: ftc_ball_chase_lib
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"

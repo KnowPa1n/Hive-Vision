@@ -141,7 +141,7 @@ two drivers is consistent.
 | State | Behavior |
 |-------|----------|
 | `SCAN` | stop and settle, then average a few Limelight frames taken after the stop, projecting each detection (`tx`, `ty`) to a FIELD position via the Pedro pose. Balls already in memory that are out of view stay; balls that should be visible but aren't get dropped. |
-| `TRAVEL` | Pedro drives to `APPROACH_DIST` short of the nearest remembered ball, facing it. |
+| `TRAVEL` | Pedro drives to `APPROACH_DIST` short of the nearest remembered ball, facing it. A drive that times out counts as one failed approach and re-plans, giving up after `SEARCH_MAX_STEPS` failed approaches. |
 | `TURN` | in-place turn to face a close ball, or sweep when nothing is known. |
 | `CHASE` | camera-only final approach (aim on `tx`, range from `ty`) — no field position needed, so localization error stops mattering. Coasts straight if the ball disappears right at the intake. |
 | `PICKUP` | stop, run the intake, clear that ball from memory, back to `SCAN`. |
