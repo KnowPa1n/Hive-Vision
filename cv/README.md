@@ -16,7 +16,8 @@ The Control Hub track of Hive Vision. Raw-OpenCV alternative to the Limelight tr
 | `tools/sample_hsv.py`                | Mines per‑color HSV ranges from a YOLO label set + images (needs your dataset).                 |
 | `tools/hsv_tuner.py`                 | Live tuner: drag H/S/V trackbars to get a mask that only lights up the ball.                    |
 | `tools/realtime_cv.py`               | Viewer for the on‑hub detector over your own footage (same keys as the model viewer).           |
-| `TeamCode/BallDetectorPipeline.java` | **VisionProcessor** implementation — drop into `TeamCode/` of your FTC SDK project.             |
+| `TeamCode/BallBlobPipeline.java`     | Shared base class (blob scoring, confirmation state, overlay draw) used by both hub pipelines. |
+| `TeamCode/BallDetectorPipeline.java` | **VisionProcessor** implementation (HSV math only) — drop both this and the base into `TeamCode/`. |
 
 ## Workflow
 
@@ -33,7 +34,7 @@ The Control Hub track of Hive Vision. Raw-OpenCV alternative to the Limelight tr
     ```
 
     Keys: `1/2/3` pick yellow/red/blue, `r` prints the range, `s` saves a preview, `q` quits.
-3. **Copy the tuned HSV constants** into the static fields at the top of `TeamCode/BallDetectorPipeline.java`, then copy that file into `TeamCode/` of your FTC SDK project.
+3. **Copy the tuned HSV constants** into the static fields at the top of `TeamCode/BallDetectorPipeline.java`, then copy **both** `TeamCode/BallBlobPipeline.java` (the base class it extends) and `TeamCode/BallDetectorPipeline.java` into `TeamCode/` of your FTC SDK project.
 4. **Register the processor in your OpMode** (VisionPortal API):
 
 ```java

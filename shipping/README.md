@@ -11,8 +11,8 @@ Everything needed to deploy the full three-track stack, gathered in one place. W
 | PC / ONNX Runtime (Jetson, dev PC) | YOLOv8n ONNX, 960×960 (no Limelight runs ONNX)      | `../neural-net/weights/best.onnx`                                       |
 | PC only                            | YOLO float32 TFLite test artifact                   | `../neural-net/weights/best_limelight3a_float32.tflite`                 |
 | PC only                            | YOLO int8-weight (DRQ) TFLite test artifact, 3.4 MB | `../neural-net/weights/best_limelight3a_int8.tflite`                    |
-| Control Hub                        | HSV Java pipeline                                   | `../cv/TeamCode/BallDetectorPipeline.java`                        |
-| Control Hub                        | Lab chromaticity Java pipeline                      | `../lab/TeamCode/LabBallDetectorPipeline.java`                    |
+| Control Hub                        | HSV Java pipeline + shared base                     | `../cv/TeamCode/BallDetectorPipeline.java` (extends `BallBlobPipeline.java`) |
+| Control Hub                        | Lab chromaticity Java pipeline                      | `../lab/TeamCode/LabBallDetectorPipeline.java` (extends `BallBlobPipeline.java`) |
 | Control Hub                        | Lab learned config                                  | `../lab/tools/lab_tuned.json`                                     |
 | —                                  | source checkpoint (re-training/re-export)           | `../neural-net/weights/best.pt`                                         |
 

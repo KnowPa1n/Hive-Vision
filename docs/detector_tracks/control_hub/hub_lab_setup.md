@@ -6,13 +6,13 @@ The shadow-robust middle track: CIELAB chromaticity hue plus an adaptive chroma 
 
 | Thing                                       | What it's for               |
 | ------------------------------------------- | --------------------------- |
-| `lab/TeamCode/LabBallDetectorPipeline.java` | the VisionProcessor drop-in |
-| `lab/tools/lab_tuned.json`                  | shipped learned constants   |
-| An FTC SDK project with a webcam            | `VisionPortal` + EasyOpenCV |
+| `lab/TeamCode/BallBlobPipeline.java` + `lab/TeamCode/LabBallDetectorPipeline.java` | the VisionProcessor drop-in + the base class it extends |
+| `lab/tools/lab_tuned.json`                                            | shipped learned constants                   |
+| An FTC SDK project with a webcam                                      | `VisionPortal` + EasyOpenCV                 |
 
 ## Step 1 — Copy the pipeline into your project
 
-Copy `lab/TeamCode/LabBallDetectorPipeline.java` into your FTC SDK project's `TeamCode/` folder.
+Copy `lab/TeamCode/BallBlobPipeline.java` (the base class) **and** `lab/TeamCode/LabBallDetectorPipeline.java` into your FTC SDK project's `TeamCode/` folder.
 
 ## Step 2 — Register it in an OpMode
 

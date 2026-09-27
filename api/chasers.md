@@ -36,7 +36,7 @@ loop-driven (`start()/update()/abort()`) is explained on the
 | `SEARCHING` | rotate (`SEARCH_TURN`); ends early if we dead-reckon `SEARCH_SWEEP_DEG` with nothing in view (empty field → clean `DONE`) |
 | `CHASING` | aim (P on `tx`), drive forward (P on distance) once roughly aimed |
 | `COASTING` | ball lost close to the intake → keep driving straight `COAST_MS`, don't spin away |
-| `PICKUP` | stop, intake `PICKUP_DWELL_MS`, count the pickup |
+| `PICKUP` | stop, intake `PICKUP_DWELL_MS`, count the pickup (or requeue as a failed pickup if a `PickupConfirmer` says the ball never arrived within `PICKUP_CONFIRM_MS`) |
 | `DONE` | `pickups >= maxPickups` (or `start()` never called) |
 
 ```java
@@ -53,6 +53,8 @@ c.abort();                          // motors back at zero
 | `configureMecanumDirections(lf, rf, lb, rb)` | static: set standard symmetric-mecanum directions unless your drivetrain is flipped |
 | `setMaxPickups(int n)` | stop after `n` pickups; `0` = unlimited |
 | `getPickups()` | pickups counted so far |
+| `getFailedPickups()` | dwells that ended with no ball confirmed in the intake |
+| `setPickupConfirmer(c)` | optional sensor hook (`boolean isBallInIntake()`) that must fire within `PICKUP_CONFIRM_MS` for the pickup to count; `null` = count every dwell (legacy) |
 | `getState()` | current `State` |
 | `isDone()` / `isActive()` | done / running |
 | `start()` | begin (resets pickups + tracker lock) |
@@ -63,7 +65,7 @@ c.abort();                          // motors back at zero
 Tunables (all `public static`): `STOP_DIST`, `AIM_TOL_DEG`, `DRIVE_MIN_TX`,
 `DRIVE_KP`, `MIN_FWD`, `MAX_FWD`, `TURN_KP`, `MIN_TURN`, `MAX_TURN`,
 `SEARCH_TURN`, `SEARCH_SWEEP_DEG`, `COAST_MAX_DIST`, `COAST_POWER`,
-`COAST_MS`, `PICKUP_DWELL_MS`, `INTAKE_POWER`.
+`COAST_MS`, `PICKUP_DWELL_MS`, `PICKUP_CONFIRM_MS`, `INTAKE_POWER`.
 
 ---
 

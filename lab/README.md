@@ -16,7 +16,8 @@ Deep-shadow caveat: when a ball's chroma collapses toward zero (sensor stops rep
 
 ```
 lab/
-  TeamCode/LabBallDetectorPipeline.java   drop-in VisionProcessor (Control Hub)
+  TeamCode/BallBlobPipeline.java          shared base (blob scoring, confirmation state, overlay)
+  TeamCode/LabBallDetectorPipeline.java   drop-in VisionProcessor (Control Hub, Lab math only)
   tools/
     lab_lib.py            shared core (features, mask, blobs, adaptive gain)
     fit_lab_from_yolo.py  learn hue bands/floors/gates from the YOLO reference detections
@@ -34,7 +35,7 @@ lab/
 
 ## Using it on the robot
 
-Copy `TeamCode/LabBallDetectorPipeline.java` into `TeamCode/`, then:
+Copy **both** `TeamCode/BallBlobPipeline.java` (the base class it extends) and `TeamCode/LabBallDetectorPipeline.java` into `TeamCode/`, then:
 
 ```java
 LabBallDetectorPipeline pipeline = new LabBallDetectorPipeline();

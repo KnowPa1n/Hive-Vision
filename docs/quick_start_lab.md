@@ -12,13 +12,14 @@ color, Lab mostly still works.
 
 | Thing | What it's for |
 |-------|---------------|
-| `lab/TeamCode/LabBallDetectorPipeline.java` | the `VisionProcessor` drop-in |
+| `lab/TeamCode/BallBlobPipeline.java` + `lab/TeamCode/LabBallDetectorPipeline.java` | the `VisionProcessor` drop-in + the base class it extends |
 | `lab/tools/lab_tuned.json` | shipped learned constants |
 | FTC SDK project with a USB webcam | `VisionPortal` + EasyOpenCV |
 
 ## 1. Copy the pipeline
 
-Copy `lab/TeamCode/LabBallDetectorPipeline.java` into your FTC project's
+Copy `lab/TeamCode/BallBlobPipeline.java` (the base class) **and**
+`lab/TeamCode/LabBallDetectorPipeline.java` into your FTC project's
 `TeamCode/` folder.
 
 ## 2. Register it in an OpMode

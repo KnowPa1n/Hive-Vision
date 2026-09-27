@@ -165,6 +165,7 @@ SSD-MobileNetV2 model in place instead of YOLO — with
 YOLOv8n `best.onnx` (and the float32/int8 YOLO `.tflite` test artifacts) run
 on a PC / ONNX Runtime host. Read detections through the
 Limelight API used by your FTC integration. For the Control Hub paths, copy
+the shared base `cv/TeamCode/BallBlobPipeline.java` plus
 `cv/TeamCode/BallDetectorPipeline.java` (HSV) or
 `lab/TeamCode/LabBallDetectorPipeline.java` (Lab chromaticity) into
 `TeamCode/`, register the processor with a `VisionPortal`, and read
@@ -254,11 +255,11 @@ hive-vision/
     weights/labels.txt        class labels: pollen/nectar order
     scripts/                  live viewer + annotated-video exporter
   cv/                         Control Hub track (HSV)
-    TeamCode/                 VisionPortal processor (drop-in for the FTC SDK)
+    TeamCode/                 BallBlobPipeline.java + BallDetectorPipeline.java (drop-in processors)
     tools/                    tuning/eval tooling + shipped HSV config
     docs/                     evaluation report, cached model truth
   lab/                        Control Hub track (Lab chromaticity)
-    TeamCode/                 LabBallDetectorPipeline.java (drop-in processor)
+    TeamCode/                 BallBlobPipeline.java + LabBallDetectorPipeline.java (drop-in processor)
     tools/                    YOLO-learned config, fitter, sweep, tuner, viewer
     docs/                     evaluation report, cached YOLO reference detections
   ftc_ball_chase_lib/          FTC-side library (BallTracker + chase drivers)

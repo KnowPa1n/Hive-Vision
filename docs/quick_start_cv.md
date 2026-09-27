@@ -13,13 +13,14 @@ ball *candidates*.
 
 | Thing | What it's for |
 |-------|---------------|
-| `cv/TeamCode/BallDetectorPipeline.java` | the `VisionProcessor` drop-in |
+| `cv/TeamCode/BallBlobPipeline.java` + `cv/TeamCode/BallDetectorPipeline.java` | the `VisionProcessor` drop-in + the base class it extends |
 | `cv/tools/hsv_tuned.json` | shipped HSV config (ranges + gates) |
 | FTC SDK project with a USB webcam | `VisionPortal` + EasyOpenCV |
 
 ## 1. Copy the pipeline
 
-Copy `cv/TeamCode/BallDetectorPipeline.java` from this repo into your FTC
+Copy `cv/TeamCode/BallBlobPipeline.java` (the base class) **and**
+`cv/TeamCode/BallDetectorPipeline.java` from this repo into your FTC
 project's `TeamCode/` folder (same level as your OpModes).
 
 ## 2. Register it in an OpMode

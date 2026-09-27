@@ -116,6 +116,7 @@ public class AllTests {
         testControllerSearchSweep();
         testControllerChaseAndPickup();
         testControllerPredictedCoast();
+        testControllerPickupConfirmation();
         testFollowerSearchExhausts();
         testFollowerChaseAndPickup();
         testFollowerTravelTimeout();
@@ -396,6 +397,53 @@ public class AllTests {
             BallChaseController.COAST_MS = oldCoast;
             BallChaseController.PICKUP_DWELL_MS = oldDwell;
             BallTracker.LOCK_LOST_MS = oldLost;
+        }
+    }
+
+    private static void testControllerPickupConfirmation() {
+        System.out.println("controller: pickup-confirmation hook");
+        long oldDwell = BallChaseController.PICKUP_DWELL_MS;
+        long oldConfirm = BallChaseController.PICKUP_CONFIRM_MS;
+        BallChaseController.PICKUP_DWELL_MS = 20;
+        BallChaseController.PICKUP_CONFIRM_MS = 250;
+        try {
+            // 1) confirmer says NO -> never credited, counted as a miss, moves on
+            RobotHarness rig = new RobotHarness();
+            MockMotor lf = new MockMotor(), rf = new MockMotor(), lb = new MockMotor(), rb = new MockMotor();
+            MockMotor intake = new MockMotor();
+            BallChaseController c = new BallChaseController(rig.newTracker(), lf, rf, lb, rb, intake);
+            c.setPickupConfirmer(() -> false);
+            c.setMaxPickups(1);
+            c.start();
+            rig.source.dets = dets(red(1, -3, 0.9));
+            c.update();
+            check(c.getState() == BallChaseController.State.PICKUP, "close + aimed -> PICKUP");
+            rig.source.dets = dets();                       // ball gone: nothing to re-chase
+            pumpController(c, 1500);
+            check(c.getPickups() == 0 && c.getFailedPickups() == 1,
+                    "unconfirmed dwell -> 0 pickups credited, 1 failed");
+            check(c.getState() == BallChaseController.State.SEARCHING,
+                    "missed pickup drops the lock and moves on, not DONE");
+
+            // 2) confirmer says YES -> pickup counted exactly as before
+            RobotHarness rig2 = new RobotHarness();
+            MockMotor lf2 = new MockMotor(), rf2 = new MockMotor(),
+                      lb2 = new MockMotor(), rb2 = new MockMotor();
+            MockMotor intake2 = new MockMotor();
+            BallChaseController c2 = new BallChaseController(rig2.newTracker(), lf2, rf2, lb2, rb2, intake2);
+            BallChaseController.PICKUP_CONFIRM_MS = 250;
+            c2.setPickupConfirmer(() -> true);
+            c2.setMaxPickups(1);
+            c2.start();
+            rig2.source.dets = dets(red(1, -3, 0.9));
+            c2.update();
+            check(c2.getState() == BallChaseController.State.PICKUP, "close + aimed -> PICKUP (confirmed path)");
+            pumpController(c2, 1500);
+            check(c2.isDone() && c2.getPickups() == 1 && c2.getFailedPickups() == 0,
+                    "confirmed dwell -> 1 pickup -> DONE");
+        } finally {
+            BallChaseController.PICKUP_DWELL_MS = oldDwell;
+            BallChaseController.PICKUP_CONFIRM_MS = oldConfirm;
         }
     }
 

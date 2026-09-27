@@ -36,7 +36,16 @@ public class BallChaseController {
     public static double COAST_POWER    = HiveConfig.COAST_POWER;
     public static long   COAST_MS       = HiveConfig.COAST_MS;
     public static long   PICKUP_DWELL_MS = HiveConfig.PICKUP_DWELL_MS;
+    public static long   PICKUP_CONFIRM_MS = HiveConfig.PICKUP_CONFIRM_MS; // extra wait for a pickup confirmer
     public static double INTAKE_POWER   = HiveConfig.INTAKE_POWER;
+
+    /** Optional sensor check that a ball actually made it into the intake.
+     *  Return true from a color sensor, beam break, or current spike. If not
+     *  set, every dwell is counted as a successful pick-up (legacy behavior). */
+    @FunctionalInterface
+    public interface PickupConfirmer {
+        boolean isBallInIntake();
+    }
 
     private final BallTracker tracker;
     private final DcMotor lf, rf, lb, rb;
@@ -44,7 +53,9 @@ public class BallChaseController {
 
     private State state = State.IDLE;
     private int pickups = 0;
+    private int failedPickups = 0;                        // dwell elapsed but no confirmation within PICKUP_CONFIRM_MS
     private int maxPickups = 0;                           // 0 = unlimited
+    private PickupConfirmer pickConfirm = null;
 
     private final ElapsedTime lastSeen = new ElapsedTime();
     private final ElapsedTime pickupTimer = new ElapsedTime();
@@ -75,13 +86,20 @@ public class BallChaseController {
 
     public void setMaxPickups(int n) { maxPickups = n; }
     public int getPickups()           { return pickups; }
+    public int getFailedPickups()     { return failedPickups; }
     public State getState()           { return state; }
     public boolean isDone()           { return state == State.DONE; }
     public boolean isActive()         { return state != State.IDLE && state != State.DONE; }
 
+    /** Set a sensor check for a real ball entering the intake (color sensor,
+     *  beam break, or current spike). Without one, pickups are counted after
+     *  every dwell. */
+    public void setPickupConfirmer(PickupConfirmer c) { pickConfirm = c; }
+
     /** Begin a fresh hunt: reset pickups and the target lock. */
     public void start() {
         pickups = 0;
+        failedPickups = 0;
         tracker.reset();
         searchSwept = 0;
         searchingWas = false;
@@ -169,8 +187,9 @@ public class BallChaseController {
 
     public void addTelemetry(Telemetry t) {
         BallTracker.Sighting s = tracker.getLast();
-        t.addData("chase", "%s  pickups=%d/%s", state, pickups,
-                  maxPickups > 0 ? Integer.toString(maxPickups) : "unlimited");
+        t.addData("chase", "%s  pickups=%d/%s failed=%d", state, pickups,
+                  maxPickups > 0 ? Integer.toString(maxPickups) : "unlimited",
+                  failedPickups);
         if (s != null) {
             t.addData("chase target", "tx=%+.1f ty=%+.1f dist=%.1f in cls=%d conf=%.2f%s",
                     s.txDeg, s.tyDeg, s.distIn, s.classId, s.confidence,
@@ -186,6 +205,19 @@ public class BallChaseController {
         drive(0, 0, 0);
         setIntake(INTAKE_POWER);
         if (pickupTimer.milliseconds() < PICKUP_DWELL_MS) return;
+
+        boolean confirmed = pickConfirm == null || pickConfirm.isBallInIntake();
+        if (!confirmed) {
+            // Missed grab (ball bounced off / rolled away): keep the intake
+            // on, but give up waiting past the confirm window instead of
+            // crediting a pickup the robot never made.
+            if (PICKUP_CONFIRM_MS > 0 && pickupTimer.milliseconds() >= PICKUP_DWELL_MS + PICKUP_CONFIRM_MS) {
+                failedPickups++;
+                tracker.reset();
+                state = State.SEARCHING;
+            }
+            return;
+        }
 
         pickups++;
         tracker.reset();                 // drop any lock so the next ball can be picked

@@ -5,7 +5,8 @@
  * color match is far more robust to illumination changes — the classic
  * HSV failure (a shadowed ball reads as a different color) mostly goes
  * away because Lab separates "what color" (a*/b* hue) from "how bright"
- * (L*).
+ * (L*). The shared candidate API, threading, and contour gating live in
+ * BallBlobPipeline; this class supplies only the Lab color math.
  *
  * How the numbers were learned (see hive-vision/lab/README.md for the
  * full story): the flagship YOLO model (hive-vision/neural-net/weights/best.pt)
@@ -45,16 +46,10 @@ import java.util.List;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
-import org.opencv.core.MatOfPoint;
-import org.opencv.core.Point;
-import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
 
-import org.firstinspires.ftc.vision.VisionProcessor;
-import org.firstinspires.ftc.vision.apriltag.AprilTagDetection; // not used, but common import
-
-public class LabBallDetectorPipeline implements VisionProcessor {
+public class LabBallDetectorPipeline extends BallBlobPipeline {
 
     /* ------------------------------------------------------------------
      * 1) Per-color chromaticity model.
@@ -70,7 +65,6 @@ public class LabBallDetectorPipeline implements VisionProcessor {
      * each frame by scl = clamp(meanL/ref_l, scl_lo, scl_hi). l_floor only
      * kills near-black pixels (shadow-tough).
      * ----------------------------------------------------------------*/
-    public enum BallColor { YELLOW, RED, BLUE }
 
     // theta = atan2(b*-128, a*-128) in degrees. Red wraps through 0.
     private static final double[] YELLOW_LO = { 22.3, 105.0 };
@@ -114,13 +108,13 @@ public class LabBallDetectorPipeline implements VisionProcessor {
     private static final double MAX_ASPECT = 1.509;
     private static final double MIN_FILL = 0.5;
     private static final double MAX_FILL = 1.3;
-    private static final boolean USE_MORPH = true;
 
     private static final double EXPECT_YELLOW_AREA = 1950.0;
     private static final double EXPECT_RED_AREA    = 2986.0;
     private static final double EXPECT_BLUE_AREA   = 3182.0;
 
-    private static double expectArea(BallColor c) {
+    @Override
+    protected double expectArea(BallColor c) {
         switch (c) {
             case YELLOW: return EXPECT_YELLOW_AREA;
             case BLUE:   return EXPECT_BLUE_AREA;
@@ -128,131 +122,48 @@ public class LabBallDetectorPipeline implements VisionProcessor {
         }
     }
 
-    private boolean suspend = false;
-    private boolean detect  = true;
-    private final Object lock = new Object();
-    private List<BallBlob> detections = new ArrayList<>();
-
-    /** One detected ball candidate for the OpMode. */
-    public static class BallBlob {
-        public final BallColor color;
-        public final Rect   rect;
-        public final double area;
-        public final double cx, cy;
-        public double cxNorm = 0, cyNorm = 0, wNorm = 0, hNorm = 0;
-
-        BallBlob(BallColor c, Rect r, double a) {
-            color = c;
-            rect = r;
-            area = a;
-            cx = r.x + r.width / 2.0;
-            cy = r.y + r.height / 2.0;
-        }
-
-        void normalize(int frameW, int frameH) {
-            cxNorm = cx / frameW;
-            cyNorm = cy / frameH;
-            wNorm = rect.width / (double) frameW;
-            hNorm = rect.height / (double) frameH;
-        }
-    }
-
-    /** Most ball-like detected blob of a color (candidate, not ground truth). */
-    public BallBlob bestOf(BallColor color) {
-        BallBlob best = null;
-        double bestCost = Double.MAX_VALUE;
-        synchronized (lock) {
-            for (BallBlob b : detections) {
-                if (b.color != color) continue;
-                double fill = b.area / (double) (b.rect.width * b.rect.height);
-                double cost = Math.abs(b.area / expectArea(color) - 1.0)
-                            + 4.0 * (1.0 - fill);
-                if (cost < bestCost) {
-                    bestCost = cost;
-                    best = b;
-                }
-            }
-        }
-        return best;
-    }
-
-    public List<BallBlob> getDetections() {
-        synchronized (lock) {
-            return new ArrayList<>(detections);
-        }
-    }
-
-    public void suspendDetection() { detect = false; }
-    public void resumeDetection()  { detect = true; }
-    public void suspend()          { suspend = true; }
-    public void resume()           { suspend = false; }
-
     @Override
-    public void init(int width, int height, org.firstinspires.ftc.vision.CameraCalibration calibration) {
-        // Nothing per-resolution; area gates scale from the 1080p reference.
-    }
+    protected void findBlobs(Mat input, List<BallBlob> out) {
+        double scale = (input.cols() * (double) input.rows()) / REF_MPIX;
+        int minAreaPx = (int) Math.max(40.0, MIN_AREA_RATIO * scale);
+        int maxAreaPx = (int) Math.max(minAreaPx + 1, MAX_AREA_RATIO * scale);
 
-    @Override
-    public Mat processFrame(Mat input, long captureTimeNanos) {
-        if (suspend) {
-            return input; // return unmodified
-        }
-        List<BallBlob> out = new ArrayList<>();
-        if (detect) {
-            double scale = (input.cols() * (double) input.rows()) / REF_MPIX;
-            int minAreaPx = (int) Math.max(40.0, MIN_AREA_RATIO * scale);
-            int maxAreaPx = (int) Math.max(minAreaPx + 1, MAX_AREA_RATIO * scale);
+        // One Lab conversion + one set of chroma Mats for all three colors.
+        Mat lab = new Mat();
+        Imgproc.cvtColor(input, lab, Imgproc.COLOR_RGB2Lab);
+        Mat L = new Mat(), a = new Mat(), b = new Mat();
+        Core.extractChannel(lab, L, 0);
+        Core.extractChannel(lab, a, 1);
+        Core.extractChannel(lab, b, 2);
+        lab.release();
 
-            // One Lab conversion + one set of chroma Mats for all three colors.
-            Mat lab = new Mat();
-            Imgproc.cvtColor(input, lab, Imgproc.COLOR_RGB2Lab);
-            Mat L = new Mat(), a = new Mat(), b = new Mat();
-            Core.extractChannel(lab, L, 0);
-            Core.extractChannel(lab, a, 1);
-            Core.extractChannel(lab, b, 2);
-            lab.release();
+        Mat da = new Mat(), db = new Mat();
+        a.convertTo(da, CvType.CV_32F);          // a - 128 (a/b are 0..255, centered 128)
+        b.convertTo(db, CvType.CV_32F);
+        a.release(); b.release();
+        Core.subtract(da, new Scalar(128.0), da);
+        Core.subtract(db, new Scalar(128.0), db);
 
-            Mat da = new Mat(), db = new Mat();
-            a.convertTo(da, CvType.CV_32F);          // a - 128 (a/b are 0..255, centered 128)
-            b.convertTo(db, CvType.CV_32F);
-            a.release(); b.release();
-            Core.subtract(da, new Scalar(128.0), da);
-            Core.subtract(db, new Scalar(128.0), db);
+        Mat sat = new Mat();
+        Mat da2 = new Mat(), db2 = new Mat();
+        Core.multiply(da, da, da2);
+        Core.multiply(db, db, db2);
+        Core.add(da2, db2, sat);
+        da2.release(); db2.release();
+        Core.sqrt(sat, sat);                    // sat = hypot(a*, b*)
 
-            Mat sat = new Mat();
-            Mat da2 = new Mat(), db2 = new Mat();
-            Core.multiply(da, da, da2);
-            Core.multiply(db, db, db2);
-            Core.add(da2, db2, sat);
-            da2.release(); db2.release();
-            Core.sqrt(sat, sat);                    // sat = hypot(a*, b*)
+        // Adaptive chroma gain from the frame's ambient brightness.
+        double ambL = Core.mean(L).val[0];
+        double scl = Math.min(SCL_HI, Math.max(SCL_LO, ambL / REF_L));
 
-            // Adaptive chroma gain from the frame's ambient brightness.
-            double ambL = Core.mean(L).val[0];
-            double scl = Math.min(SCL_HI, Math.max(SCL_LO, ambL / REF_L));
+        maskAndFind(da, db, sat, L, BallColor.YELLOW,
+                    YELLOW_F, YELLOW_B, YELLOW_SAT, scl, MIN_L, minAreaPx, maxAreaPx, out);
+        maskAndFind(da, db, sat, L, BallColor.RED,
+                    RED_F, RED_B, RED_SAT, scl, MIN_L, minAreaPx, maxAreaPx, out);
+        maskAndFind(da, db, sat, L, BallColor.BLUE,
+                    BLUE_F, BLUE_B, BLUE_SAT, scl, MIN_L, minAreaPx, maxAreaPx, out);
 
-            maskAndFind(da, db, sat, L, BallColor.YELLOW,
-                        YELLOW_F, YELLOW_B, YELLOW_SAT, scl, MIN_L, minAreaPx, maxAreaPx, out);
-            maskAndFind(da, db, sat, L, BallColor.RED,
-                        RED_F, RED_B, RED_SAT, scl, MIN_L, minAreaPx, maxAreaPx, out);
-            maskAndFind(da, db, sat, L, BallColor.BLUE,
-                        BLUE_F, BLUE_B, BLUE_SAT, scl, MIN_L, minAreaPx, maxAreaPx, out);
-
-            da.release(); db.release(); sat.release(); L.release();
-        }
-        for (BallBlob b : out) b.normalize(input.cols(), input.rows());
-
-        synchronized (lock) { detections = out; }
-
-        Mat output = input.clone();
-        if (detect) drawOverlay(output, out);
-        return output;
-    }
-
-    @Override
-    public void onDrawFrame(android.graphics.Canvas canvas, int onscreenWidth, int onscreenHeight,
-                            float scaleBmpPxToCanvasPx, float scaleCanvasDensity, Object userContext) {
-        // No custom canvas drawing needed.
+        da.release(); db.release(); sat.release(); L.release();
     }
 
     private void maskAndFind(Mat da, Mat db, Mat sat, Mat Lm, BallColor color,
@@ -282,43 +193,7 @@ public class LabBallDetectorPipeline implements VisionProcessor {
         Core.bitwise_and(mask, m4, mask);
         m1.release(); m2.release(); m3.release(); m4.release();
 
-        if (USE_MORPH) {
-            Mat el = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE,
-                                                   new org.opencv.core.Size(5, 5));
-            Imgproc.morphologyEx(mask, mask, Imgproc.MORPH_OPEN, el);
-            Imgproc.morphologyEx(mask, mask, Imgproc.MORPH_CLOSE, el);
-            el.release();
-        }
-
-        List<MatOfPoint> contours = new ArrayList<>();
-        Mat hier = new Mat();
-        Imgproc.findContours(mask, contours, hier, Imgproc.RETR_EXTERNAL,
-                             Imgproc.CHAIN_APPROX_SIMPLE);
-        hier.release();
-        mask.release();
-        for (MatOfPoint ct : contours) {
-            double area = Imgproc.contourArea(ct);
-            Rect r = Imgproc.boundingRect(ct);
-            ct.release();
-            if (area < minAreaPx || area > maxAreaPx) continue;
-            if (r.width <= 0 || r.height <= 0) continue;
-            double aspect = (double) r.width / r.height;
-            if (aspect < MIN_ASPECT || aspect > MAX_ASPECT) continue;
-            double fill = area / (double) (r.width * r.height);
-            if (fill < MIN_FILL || fill > MAX_FILL) continue;
-            out.add(new BallBlob(color, r, area));
-        }
-    }
-
-    private void drawOverlay(Mat frame, List<BallBlob> blobs) {
-        for (BallBlob b : blobs) {
-            Scalar col = b.color == BallColor.YELLOW ? new Scalar(0, 255, 255)
-                       : b.color == BallColor.RED    ? new Scalar(0, 0, 255)
-                       : new Scalar(255, 0, 0);
-            Imgproc.rectangle(frame, b.rect, col, 2);
-            Imgproc.putText(frame, b.color.name(),
-                            new Point(b.rect.x, b.rect.y - 6),
-                            Imgproc.FONT_HERSHEY_PLAIN, 1.0, col, 1);
-        }
+        blobsFromMask(mask, color, minAreaPx, maxAreaPx,
+                      MIN_ASPECT, MAX_ASPECT, MIN_FILL, MAX_FILL, out);
     }
 }

@@ -80,6 +80,7 @@ public final class HiveConfig {
     public static long   COAST_MS           = 450;
     public static long   CHASE_LOST_MS      = 500;  // no ball this long in chase -> forget it
     public static long   PICKUP_DWELL_MS    = 600;
+    public static long   PICKUP_CONFIRM_MS  = 800;  // extra wait for a pickup confirmer to see the ball; 0 = wait forever
     public static double INTAKE_POWER       = 1.0;
 
     /* ---------------- Pedro planning (follower) ---------------- */

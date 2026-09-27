@@ -1,7 +1,8 @@
 # Control Hub (OpenCV HSV + Lab)
 
 Two model-free hub tracks: `cv/TeamCode/BallDetectorPipeline.java` (HSV) and
-`lab/TeamCode/LabBallDetectorPipeline.java` (Lab chromaticity). Setup, tuning
+`lab/TeamCode/LabBallDetectorPipeline.java` (Lab chromaticity), both extending
+the shared base `cv/TeamCode/BallBlobPipeline.java`. Setup, tuning
 commands, and viewer tools are in
 [cv/README.md](https://github.com/sidhuharjas/Hive-Vision/blob/main/cv/README.md)
 and

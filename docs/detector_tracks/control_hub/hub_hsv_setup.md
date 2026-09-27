@@ -8,13 +8,13 @@ Model-free color detection that runs on the robot's Control Hub itself — no co
 
 | Thing                                   | What it's for                   |
 | --------------------------------------- | ------------------------------- |
-| `cv/TeamCode/BallDetectorPipeline.java` | the VisionProcessor drop-in     |
-| `cv/tools/hsv_tuned.json`               | shipped config (ranges + gates) |
-| An FTC SDK project with a webcam        | `VisionPortal` + EasyOpenCV     |
+| `cv/TeamCode/BallBlobPipeline.java` + `cv/TeamCode/BallDetectorPipeline.java` | the VisionProcessor drop-in + the base class it extends |
+| `cv/tools/hsv_tuned.json`                                                | shipped config (ranges + gates)                         |
+| An FTC SDK project with a webcam                                         | `VisionPortal` + EasyOpenCV                             |
 
 ## Step 1 — Copy the pipeline into your project
 
-Copy `cv/TeamCode/BallDetectorPipeline.java` into your FTC SDK project's `TeamCode/` folder.
+Copy `cv/TeamCode/BallBlobPipeline.java` (the base class) **and** `cv/TeamCode/BallDetectorPipeline.java` into your FTC SDK project's `TeamCode/` folder.
 
 ## Step 2 — Register it in an OpMode
 

@@ -88,7 +88,7 @@ SEARCHING -> CHASING -> COASTING -> PICKUP -> SEARCHING ... -> DONE
 | `SEARCHING` | rotate in place (`SEARCH_TURN`) until the tracker yields a ball, or until `SEARCH_SWEEP_DEG` of dead-reckoned rotation with nothing in view — the auto guard that ends an empty-field hunt cleanly. |
 | `CHASING` | aim with a P controller on `tx`, drive forward (P on dist) only once roughly aimed. |
 | `COASTING` | the locked ball vanished at close range (it went under/behind the intake): keep driving straight for `COAST_MS` instead of spinning away, as long as it was lost close (`lastSeenDist <= COAST_MAX_DIST`). |
-| `PICKUP` | stop, run the intake for `PICKUP_DWELL_MS`, then count the pickup. |
+| `PICKUP` | stop, run the intake for `PICKUP_DWELL_MS`, then count the pickup — unless a `PickupConfirmer` is set and never reports a ball in the intake within `PICKUP_CONFIRM_MS` (then it's a `failedPickup`, no credit, lock dropped). |
 | `DONE` | when pickups reach `maxPickups` (or `update()` is never started). |
 
 **Usage (loop-driven)**
@@ -103,6 +103,22 @@ while (opModeIsActive() && !chase.isDone()) {
 }
 chase.abort();                       // hands motors back at zero
 ```
+
+**Pickup confirmation (optional)**
+
+A blind dwell credits a pickup even when the ball bounced off the intake.
+Wire in any cheap sensor — a color/infrared sensor in the intake throat, a
+beam break, or intake-current spike — so a pickup only counts when a ball
+actually arrived:
+
+```java
+chase.setPickupConfirmer(() -> intakeCurrentSensor.getCurrent() > 2.0);
+```
+
+A dwell that panics out without confirmation increments `getFailedPickups()`
+instead of `getPickups()`, drops the tracker lock, and returns to `SEARCHING`.
+Without a confirmer, every dwell is credited (legacy behavior). Timeout is
+`PICKUP_CONFIRM_MS`; `0` means the robot waits forever for the sensor.
 
 **Conventions**
 
