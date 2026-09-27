@@ -12,6 +12,19 @@ They are the integration surface for your auto/teleop loop.
 All three share the same perception core, so behavior is consistent whichever
 you pick.
 
+## Calling pattern (all three)
+
+Same every time — configure, wait for start, then poll until done:
+
+```text
+create → configure → waitForStart() → start() → update() … → isDone() → abort()
+```
+
+`abort()` zeroes motors and the intake from every state, so it's safe to call
+unconditionally at the end of an OpMode. Blocking (`.go(opMode)`) vs
+loop-driven (`start()/update()/abort()`) is explained on the
+[landing page](README.md).
+
 ---
 
 ## `BallChaseController` — no-odometry chase

@@ -60,18 +60,18 @@ while (opModeIsActive()) {
 The `BallTracker` class reference — lock, confirmation, `Sighting`,
 `DetectionSource` — is [ball_tracker.md](ball_tracker.md).
 
-## Where to go next
+## Class index
 
-| You want to… | Use | Docs |
-|--------------|-----|------|
-| Collect balls, one line | `BallHunt.go(this)` | [chasers.md](chasers.md) |
-| Auto that plans paths | `BallChaseFollower` (own `follower.update()`) | [chasers.md](chasers.md) |
-| Teleop/simple pickup | `BallChaseController` | [chasers.md](chasers.md) |
-| Fluent verb chains | `BallWrangler` + `PedroWrangler`/`MecanumWrangler` | [wrapper.md](wrapper.md) |
-| Just read a target | `BallTracker.update()` | [ball_tracker.md](ball_tracker.md) |
-| Sensor-verified pickups | `withPickupSensor(...)` | [wrapper.md](wrapper.md) |
+| Class | Layer | Page | What it does / use it when |
+|-------|-------|------|----------------------------|
+| [`BallTracker`](ball_tracker.md) | `final/` | perception core | just read a target — `update()` once per loop; one ball per frame (confidence + staleness gating, color-bound target lock, multi-frame confirmation), ground range, `Sighting` |
+| [`BallChaseController`](chasers.md) | `final/` | no-odometry chase | pure camera chase — teleop assist or a short pickup phase; no localizer needed |
+| [`BallChaseFollower`](chasers.md) | `final/` | Pedro auto hybrid | a Pedro auto that plans paths — you own `follower.update()`; camera finishes |
+| [`BallHunt`](chasers.md) | `final/` | one-liner | collect balls in one line — `.go(this)` |
+| [`BallWrangler`](wrapper.md) | `wrapper/` | fluent verb API | prose-like chains — `grab(RED).within(6)`; `withPickupSensor(...)` for sensor-verified pickups |
+| [`PedroWrangler` / `MecanumWrangler`](wrapper.md) | `wrapper/` | motion providers | only the physical motion, under the wrapper |
 
-## Blocking vs loop-driven (read this once)
+## Blocking vs loop-driven & lifecycle
 
 - **`.go(opMode)` BLOCKS.** It owns the whole loop; for Pedro it also owns
   `follower.update()`. Call it from inside a `LinearOpMode` after
@@ -85,8 +85,6 @@ The `BallTracker` class reference — lock, confirmation, `Sighting`,
   Limelight SDK does its own background reading, which is why gating on
   `staleness` matters (see [ball_tracker.md](ball_tracker.md)).
 
-## Lifecycle
-
 ```text
 create → configure (setAllowedClasses / .collect(n).within(sec))
        → waitForStart()
@@ -97,17 +95,6 @@ create → configure (setAllowedClasses / .collect(n).within(sec))
 
 `abort()` zeroes motors and the intake from every state — safe to call
 unconditionally at the end of an OpMode.
-
-## Class index
-
-| Class | Layer | Page | What it does |
-|-------|-------|------|--------------|
-| [`BallTracker`](ball_tracker.md) | `final/` | perception core | raw detections → **one** ball per frame (confidence + staleness gating, color-bound target lock, multi-frame confirmation), ground range, `Sighting` |
-| [`BallChaseController`](chasers.md) | `final/` | no-odometry chase | pure camera chase state machine for teleop/simple auto |
-| [`BallChaseFollower`](chasers.md) | `final/` | Pedro auto hybrid | Pedro plans the approach, camera finishes |
-| [`BallHunt`](chasers.md) | `final/` | one-liner | the whole collect as a blocking fluent call |
-| [`BallWrangler`](wrapper.md) | `wrapper/` | fluent verb API | prose-like chains — `grab(RED).within(6)` |
-| [`PedroWrangler` / `MecanumWrangler`](wrapper.md) | `wrapper/` | motion providers | only the physical motion, under the wrapper |
 
 ## Coordinate & calibration note
 

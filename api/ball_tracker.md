@@ -73,7 +73,7 @@ while (opModeIsActive()) {
 
 Fields: `classId`, `txDeg` (+ = right), `tyDeg` (+ = up), `confidence`,
 `predicted` (true while coasting on a momentarily-missing locked ball),
-`dist` — ground range in inches.
+`distIn` — ground range in inches.
 
 ## How the lock works
 
