@@ -1,7 +1,9 @@
 # Table of contents
 
 * [Overview](README.md)
-* [5-minute quick start](quick_start.md)
+* [5-minute quick start — Limelight 3A](quick_start.md)
+* [5-minute quick start — Control Hub CV (HSV)](quick_start_cv.md)
+* [5-minute quick start — Control Hub Lab](quick_start_lab.md)
 * [Calibration & coordinates](calibration.md)
 * [Which detector track?](detector_tracks/README.md)
   * [Limelight 3A (SSD)](detector_tracks/limelight_3a_ssd/README.md)

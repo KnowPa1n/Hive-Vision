@@ -1,7 +1,13 @@
-# Hive Vision — 5-minute quick start
+# Hive Vision — 5-minute quick start (Limelight 3A)
 
-Get Hive Vision running on an FTC robot with a Limelight 3A, then verify the
-robot can see and lock onto game elements.
+The neural track: a Limelight 3A runs the SSD detector on its own CPU, and
+your code reads one chosen ball per frame. This is the most capable path —
+the only one that understands shape, so shadows and dark balls still work.
+
+> Looking for a model-free track you can run on a plain Control Hub + webcam
+> with no Limelight? See the
+> [Control Hub CV (HSV)](quick_start_cv.md) and
+> [Control Hub Lab](quick_start_lab.md) quick starts instead.
 
 > **Goal:** by the end of this page you have a working `BallTracker` (or the
 > full `BallChaseFollower` chase) and you can read the current target from
