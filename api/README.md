@@ -12,7 +12,7 @@ from TeleOp or autonomous. Two layers, both copied from `ftc_ball_chase_lib/`:
 Tuning never requires code archaeology: **every** constant lives in
 `final/HiveConfig.java` — one block per driver's defaults.
 
-## 90% of teams only need these 3 things
+## Most teams need only these 3 things
 
 ### 1. The one-liner — collect balls in auto (Pedro)
 
