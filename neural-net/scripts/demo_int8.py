@@ -2,7 +2,7 @@
 """Show the int8 Limelight 3A model working: live window + annotated MP4.
 
 Run (from the repo root):
-    & .venv-tflite\Scripts\python.exe hive-vision\neural-net\scripts\demo_int8.py
+    & .venv-tflite\\Scripts\\python.exe neural-net\\scripts\\demo_int8.py
 
 Keys: q / ESC quit · p pause · s save current frame (into demo/frames/)
 """
@@ -14,7 +14,7 @@ import cv2
 import numpy as np
 import tensorflow as tf
 
-REPO = Path(__file__).resolve().parents[3]
+REPO = Path(__file__).resolve().parents[2]              # repo root, clone-name agnostic
 LABELS = ("yellow_pollen", "red_nectar", "blue_nectar")
 COLORS = ((0, 255, 255), (0, 0, 255), (255, 0, 0))
 
@@ -96,11 +96,11 @@ def detections(interpreter, frame, input_detail, output_detail, confidence, sphe
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--weights",
-        default=str(REPO / "hive-vision/neural-net/weights/best_limelight3a_int8.tflite"))
+        default=str(REPO / "neural-net/weights/best_limelight3a_int8.tflite"))
     parser.add_argument("--source",
-        default=str(REPO / "hive-vision/demo/tflite_test_v7f.mp4"))
+        default=str(REPO / "demo/tflite_test_v7f.mp4"))
     parser.add_argument("--output",
-        default=str(REPO / "hive-vision/demo/tflite_test_v7f_int8.mp4"))
+        default=str(REPO / "demo/tflite_test_v7f_int8.mp4"))
     parser.add_argument("--confidence", type=float, default=0.25)
     parser.add_argument("--no-window", action="store_true",
                         help="skip the live preview, only write the MP4")

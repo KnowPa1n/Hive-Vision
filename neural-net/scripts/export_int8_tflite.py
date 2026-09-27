@@ -7,10 +7,12 @@ best_limelight3a_float32.tflite. The SavedModel is generated first:
     onnx2tf -i neural-net/weights/best.onnx -o neural-net/_litert_int8/sm -b 1 -osd -fdosm
 
 then this script applies post-training INT8 quantization calibrated on the
-fused training set (V7f/dataset/concat), i.e. exactly the images the model was
-trained on. Use this venv (has tensorflow + onnx2tf):
+fused training set the model was trained on. That set lives outside this repo
+(private dev data) — point `--calib-images` at it (the default is the
+clone-relative `V7f/dataset/concat/images/train`). Run from the repo root,
+inside this venv (has tensorflow + onnx2tf):
 
-    hive-vision/neural-net/.venv-tflite/Scripts/python.exe neural-net/scripts/export_int8_tflite.py
+    .venv-tflite\\Scripts\\python.exe neural-net/scripts/export_int8_tflite.py
 
 Output contract matches the shipped float32 export:
     input   images     (1, 960, 960, 3) float32 (0..1, RGB)
@@ -30,10 +32,10 @@ import cv2
 import numpy as np
 import tensorflow as tf
 
-BASE = pathlib.Path(__file__).resolve().parents[3]          # .../ftc-yolo-synth/ftc-yolo-synth
-WEIGHTS = BASE / "hive-vision" / "neural-net" / "weights"
-DEFAULT_SM = BASE / "hive-vision" / "neural-net" / "_litert_int8" / "sm"
-DEFAULT_CALIB = BASE / "V7f" / "dataset" / "concat" / "images" / "train"
+REPO = pathlib.Path(__file__).resolve().parents[2]          # repo root, clone-name agnostic
+WEIGHTS = REPO / "neural-net" / "weights"
+DEFAULT_SM = REPO / "neural-net" / "_litert_int8" / "sm"
+DEFAULT_CALIB = REPO / "V7f" / "dataset" / "concat" / "images" / "train"
 DEFAULT_OUT = WEIGHTS / "best_limelight3a_int8.tflite"
 SIZE = 960
 CALIB_COUNT = 256
@@ -75,6 +77,14 @@ def main():
                          "scales, which TFLite rejects - so this flag is a "
                          "documentation aid, not the shipped artifact.")
     args = ap.parse_args()
+
+    sm = pathlib.Path(args.saved_model)
+    if not sm.is_dir():
+        raise SystemExit(
+            f"SavedModel not found: {sm}\n"
+            "Generate it first with:\n"
+            f"  onnx2tf -i {WEIGHTS / 'best.onnx'} "
+            f"-o {DEFAULT_SM} -b 1 -osd -fdosm")
 
     converter = tf.lite.TFLiteConverter.from_saved_model(args.saved_model)
     converter.optimizations = [tf.lite.Optimize.DEFAULT]

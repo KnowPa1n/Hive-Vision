@@ -24,8 +24,9 @@ import numpy as np
 
 NAMES = {1: "yellow", 2: "red", 3: "blue"}
 # Start from the learned values (matches hsv_tuned.json / fit_hsv_from_yolo.py);
-# red has two segments (its hue wraps through 0) -- tune seg A with the
-# trackbars below, then copy the same S/V to seg B and only change H.
+# red has two segments (its hue wraps through 0) -- the trackbars edit the
+# primary segment (seg 0) live, seg 1 keeps its INIT values, and the mask
+# shows BOTH segments so you can confirm the wrap is covered.
 INIT = {
     "yellow": ([9, 90, 45], [33, 255, 238]),
     "red":    ([[0, 81, 45], [170, 81, 45]], [[15, 255, 232], [180, 255, 232]]),
@@ -38,16 +39,22 @@ def nothing(_):
     pass
 
 
+def segments(color_name):
+    """[(lo, hi), ...] for each HSV segment of a color (red wraps -> two)."""
+    lo, hi = INIT[color_name]
+    if isinstance(lo[0], (list, tuple)):
+        return list(zip(lo, hi))
+    return [(lo, hi)]
+
+
 def windows(color_name):
     cv2.destroyWindow(WIN)
     cv2.namedWindow(WIN)
-    lo, hi = INIT[color_name][0], INIT[color_name][1]
-    cv2.createTrackbar("H lo", WIN, int(lo[0]), 180, nothing)
-    cv2.createTrackbar("S lo", WIN, int(lo[1]), 255, nothing)
-    cv2.createTrackbar("V lo", WIN, int(lo[2]), 255, nothing)
-    cv2.createTrackbar("H hi", WIN, int(hi[0]), 180, nothing)
-    cv2.createTrackbar("S hi", WIN, int(hi[1]), 255, nothing)
-    cv2.createTrackbar("V hi", WIN, int(hi[2]), 255, nothing)
+    lo, hi = segments(color_name)[0]     # trackbars edit the primary segment
+    for name, pos, mx in (("H lo", lo[0], 180), ("S lo", lo[1], 255),
+                          ("V lo", lo[2], 255), ("H hi", hi[0], 180),
+                          ("S hi", hi[1], 255), ("V hi", hi[2], 255)):
+        cv2.createTrackbar(name, WIN, int(pos), mx, nothing)
 
 
 def track():
@@ -72,16 +79,21 @@ def main():
 
     color = 1
     windows(NAMES[color])
+    segs = segments(NAMES[color])          # primary segment first; rest fixed
     while True:
         if cap is not None:
             ok, frame = cap.read()
             if not ok:
                 break
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        hlo, slo, vlo, hhi, shi, vhi = track()
-        lo = np.array([hlo, slo, vlo])
-        hi = np.array([hhi, shi, vhi])
-        mask = cv2.inRange(hsv, lo, hi)
+        vals = track()
+        primary_lo = np.array(vals[:3])
+        primary_hi = np.array(vals[3:])
+        mask = np.zeros(hsv.shape[:2], np.uint8)
+        for i, (slo, shi) in enumerate(segs):
+            lo = primary_lo if i == 0 else np.array(slo)
+            hi = primary_hi if i == 0 else np.array(shi)
+            mask |= cv2.inRange(hsv, lo, hi)
         nm = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
         cnts, _ = cv2.findContours(nm, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         vis = frame.copy()
@@ -105,8 +117,15 @@ def main():
             color = 3
         if k in (ord('1'), ord('2'), ord('3')):
             windows(NAMES[color])
+            segs = segments(NAMES[color])
         if k == ord('r'):
-            print(f"{NAMES[color]:7s} Lower {list(lo)}  Upper {list(hi)}")
+            vals = track()
+            for i, (slo, shi) in enumerate(segs):
+                lo = vals[:3] if i == 0 else slo
+                hi = vals[3:] if i == 0 else shi
+                tag = " (live)" if i == 0 else " (fixed)"
+                print(f"{NAMES[color]:7s} seg{i}{tag} Lower {list(map(int, lo))}  "
+                      f"Upper {list(map(int, hi))}")
         if k == ord('s'):
             cv2.imwrite(f"tune_{NAMES[color]}.jpg", np.hstack([frame, cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)]))
             print("saved tune_{}.jpg".format(NAMES[color]))
