@@ -92,6 +92,7 @@ public class WrapperLogicTest extends BallWrangler {
         testClear();
         testScanLeft();
         testCondFailOrElse();
+        testCondOrGiveUpCap();
         testGatherOrElse();
         testWhenFluent();
         testGatherFailCap();
@@ -105,7 +106,7 @@ public class WrapperLogicTest extends BallWrangler {
         }
         System.out.println("wrapper self-test OK: colors, scoring, projection, find/count, chain "
                 + "semantics, gather, budget, pose-fail, intake, cross-chain, timers, clear, "
-                + "scan-sweep, cond-fail, gather-orElse, When-fluent, gather-cap, "
+                + "scan-sweep, cond-fail, orGiveUp-cap, gather-orElse, When-fluent, gather-cap, "
                 + "cross-chain pickups, tracker lock, scan gating");
     }
 
@@ -359,6 +360,21 @@ public class WrapperLogicTest extends BallWrangler {
         pump(w, 2000);
         check(w.isDone(), "failed conditional chain finished");
         check(droveReverse(w), "grab gave up inside ifSeen -> orElse fired");
+    }
+
+    private static void testCondOrGiveUpCap() {
+        System.out.println("chain: orGiveUp(sec) really caps ifSeen().grab()");
+        WrapperLogicTest w = new WrapperLogicTest();
+        w.addRed(0, -8, 0.9, 0.3);              // visible at the gate...
+        w.scriptedSighting = true;
+        w.scripted = new BallTracker.Sighting(BallTracker.CLASS_RED, 0.0, -10.0, 0.9, false, 40.0);
+        w.ifSeen(RED).grab(RED).orGiveUp(0.10).orElse(() -> w.backOff(0.1));  // ...but never arrives
+        long t0 = System.currentTimeMillis();
+        pump(w, 2500);
+        long dt = System.currentTimeMillis() - t0;
+        check(w.isDone(), "timed-out conditional finished");
+        check(dt < 2000, "honored the 0.1 s orGiveUp cap, not the inner grab timeout (" + dt + " ms)");
+        check(droveReverse(w), "orGiveUp timeout ran the orElse backOff fallback");
     }
 
     private static void testGatherOrElse() {

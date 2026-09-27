@@ -525,6 +525,12 @@ public abstract class BallWrangler {
         }
 
         @Override public boolean frame() {
+            if (timedOut()) {
+                allWon = false;
+                drive(0, 0, 0);
+                intakePower(0);
+                return true;
+            }
             if (sub == null) return true;
             while (subPos < sub.size()) {
                 Step s = sub.get(subPos);
@@ -597,12 +603,12 @@ public abstract class BallWrangler {
     public int count() { return findList(null).size(); }
     public int count(BallColor color) { return findList(color).size(); }
 
-    public Target findNearest()    { return best(null, 0); }
-    public Target find(BallColor c) { return best(c, 0); }
-    public Target findLeftmost()   { return best(null, 1); }
-    public Target findRightmost()  { return best(null, 2); }
-    public Target findBiggest()    { return best(null, 3); }
-    public Target findBestScore()  { return best(null, 4); }
+    public Target findNearest()    { return best(null, Metric.NEAREST); }
+    public Target find(BallColor c) { return best(c, Metric.NEAREST); }
+    public Target findLeftmost()   { return best(null, Metric.LEFTMOST); }
+    public Target findRightmost()  { return best(null, Metric.RIGHTMOST); }
+    public Target findBiggest()    { return best(null, Metric.BIGGEST); }
+    public Target findBestScore()  { return best(null, Metric.BEST_SCORE); }
 
     /** find-style verbs, but with the returned Target field-positioned when the
      *  drivetrain has localization. */
@@ -619,9 +625,12 @@ public abstract class BallWrangler {
         return out;
     }
 
-    /** Pick the best detection by metric: 0 nearest (lowest ty), 1 leftmost,
-     *  2 rightmost, 3 biggest (area, else nearest), 4 best score. Null if none. */
-    private Target best(BallColor color, int metric) {
+    /** How `best()` picks among the detections of a color. */
+    private enum Metric { NEAREST, LEFTMOST, RIGHTMOST, BIGGEST, BEST_SCORE }
+
+    /** Pick the best detection by metric: nearest (lowest ty), leftmost,
+     *  rightmost, biggest (area, else nearest), or best score. Null if none. */
+    private Target best(BallColor color, Metric metric) {
         List<Det> dets = findList(color);
         if (dets.isEmpty()) return null;
         Det best = null;
@@ -629,11 +638,11 @@ public abstract class BallWrangler {
         for (Det d : dets) {
             double v;
             switch (metric) {
-                case 1: v = -d.bearingDeg; break;                 // most-negative tx
-                case 2: v =  d.bearingDeg; break;                 // most-positive tx
-                case 3: v =  d.area > 0 ? d.area : 1.0 / distOf(d); break;
-                case 4: v = -scoreOf(distOf(d), d.bearingDeg, d.confidence); break;
-                default: v = -distOf(d); break;                   // nearest
+                case LEFTMOST: v = -d.bearingDeg; break;               // most-negative tx
+                case RIGHTMOST: v =  d.bearingDeg; break;              // most-positive tx
+                case BIGGEST: v =  d.area > 0 ? d.area : 1.0 / distOf(d); break;
+                case BEST_SCORE: v = -scoreOf(distOf(d), d.bearingDeg, d.confidence); break;
+                default: v = -distOf(d); break;                        // NEAREST
             }
             if (best == null || v > bestV) { bestV = v; best = d; }
         }

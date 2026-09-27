@@ -54,7 +54,7 @@ public final class HiveConfig {
 
     /* ---------------- detection gating ---------------- */
 
-    public static double MIN_CONF          = 0.44; // is confidence 0-1 or 0-100 on your firmware?
+    public static double MIN_CONF          = 0.44; // detector confidence, 0..1 on Limelight 3A firmware
     public static long   MAX_STALENESS_MS  = 120;  // Limelight SDK staleness in ms ("Is The Data Fresh?")
     public static double LOCK_GATE_DEG     = 12.0; // max frame-to-frame angular jump to count as "same ball"
     public static long   LOCK_LOST_MS      = 300;  // drop the lock if it isn't matched for this long

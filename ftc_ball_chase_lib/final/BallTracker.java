@@ -32,7 +32,7 @@ public class BallTracker {
     public static final Set<Integer> CLASSES_ALL      = setOf(CLASS_RED, CLASS_BLUE, CLASS_YELLOW_NEUTRAL);
 
     /* ---- detection gating ---- */
-    public static double MIN_CONF   = HiveConfig.MIN_CONF; // CHECK telemetry: is confidence 0-1 or 0-100 on your firmware?
+    public static double MIN_CONF   = HiveConfig.MIN_CONF; // confidence is 0..1 on Limelight 3A firmware (see wrapper/Target.java)
     public static long   MAX_STALENESS_MS = HiveConfig.MAX_STALENESS_MS; // Limelight SDK reports staleness in MILLISECONDS (docs "Is The Data Fresh?")
 
     /* ---- target lock (stops flip-flopping when 2+ balls are visible) ---- */
