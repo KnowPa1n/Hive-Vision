@@ -47,7 +47,7 @@ share the same geometry gates):
 
 What the numbers mean:
 
-- **These are candidate-detection benchmarks against YOLO reference detections, not end-to-end results.** They measure whether each track *sees a ball candidate* on development footage — not successful autonomous pickups, false pickup attempts, cycle time, or match performance. A 68.7% recall does not mean the robot picks up 68.7% of yellow balls.
+- **These are candidate-detection benchmarks against YOLO reference detections, not end-to-end results.** They measure whether each track *sees a ball candidate* on development footage — not successful autonomous pickups, false pickup attempts, cycle time, or match performance. A 62.0% recall does not mean the robot picks up 62.0% of yellow balls.
 - **YOLO is the reference.** It is the only track that finds shapes, so it is
   the only one that recovers low-chroma / deep-shadow balls. Treat its output
   as the reference and the Control Hub tracks as candidate signals (7–11% precision on
@@ -60,6 +60,13 @@ What the numbers mean:
 - Pick a track per robot, not per color: Lab when balls sit in shadows,
   HSV when you want the absolute cheapest path. Never rely on a color detector
   in the darkest corners — that is YOLO's job.
+- **Same config, two measurements.** The CV report
+  ([`../cv/docs/cv_detector_report.md`](../cv/docs/cv_detector_report.md)) measured
+  this same shipped HSV config on its own 866-frame dev video and got higher
+  numbers (yellow 68.7% / red 80.1% / blue 82.3% recall at 39.9 / 26.0 / 65.5%
+  precision) — different footage, not a different detector. The shared-truth
+  head-to-head on this page is the apples-to-apples cross-track comparison;
+  prefer it when comparing tracks.
 
 Full detail: [`../lab/docs/lab_detector_report.md`](../lab/docs/lab_detector_report.md)
 and [`../cv/docs/cv_detector_report.md`](../cv/docs/cv_detector_report.md).
@@ -82,7 +89,7 @@ it outputs zero detections.
       intact, detections match
 - [x] Lab dark-frame red recall 95.5% vs HSV 40.0% (same truth, same gates)
 - [x] Java pipelines compile against the FTC SDK (`bestOf(BallColor)`)
-- [x] Config + report + README numbers in sync
+- [x] Track-comparison numbers quoted consistently from the shared 293-frame head-to-head across root README, shipping, and deployment docs (the CV report's own-footage measurement is labeled as such)
 - [ ] **Upload the SSD tflite → 3A once on hardware, confirm the pipeline loads
       and reports detections** (PC runner verifies the model, not the device)
 - [ ] **Run at confidence 0.35–0.45 on the 3A** — 0.25 produces visible false

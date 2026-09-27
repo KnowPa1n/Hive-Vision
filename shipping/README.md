@@ -34,6 +34,7 @@ What the numbers mean:
 * **Lab beats HSV on red** in recall and precision, and crushes it in shadows (95.5% vs 40% dark-frame recall). That is its purpose: Lab hue is shadow-invariant and its chroma floor adapts downward per frame.
 * **HSV keeps yellow and blue precision.** Its yellow window was hand-tuned on luckier footage; Lab is rigidly fit on this one.
 * Pick a track per robot, not per color: Lab when balls sit in shadows, HSV when you want the absolute cheapest path. Never rely on a color detector in the darkest corners — that is YOLO's job.
+* **Same config, two measurements.** The CV report (`../cv/docs/cv_detector_report.md`) measured this same shipped HSV config on its own 866-frame dev video and got higher numbers (yellow 68.7% / red 80.1% / blue 82.3% recall at 39.9 / 26.0 / 65.5% precision) — different footage, not a different detector. The shared-truth head-to-head on this page is the apples-to-apples cross-track comparison; prefer it when comparing tracks.
 
 Full detail: [`../lab/docs/lab_detector_report.md`](../lab/docs/lab_detector_report.md) and [`../cv/docs/cv_detector_report.md`](../cv/docs/cv_detector_report.md).
 
@@ -46,7 +47,7 @@ Full-INT8 activations are impossible for this architecture: the Detect head's pe
 * [x] int8 vs float32 behavior: 13-frame sweep, worst box delta 0.02%, scores intact, detections match
 * [x] Lab dark-frame red recall 95.5% vs HSV 40.0% (same truth, same gates)
 * [x] Java pipelines compile against the FTC SDK (`bestOf(BallColor)`)
-* [x] Config + report + README numbers in sync
+* [x] Track-comparison numbers quoted consistently from the shared 293-frame head-to-head across root README, shipping, and deployment docs (the CV report's own-footage measurement is labeled as such)
 * [ ] **Upload the SSD tflite → 3A once on hardware, confirm the pipeline loads and reports detections** (PC runner verifies the model, not the device)
 * [ ] **Run at confidence 0.35–0.45 on the 3A** — 0.25 produces visible false positives (identical on float32; it is a threshold property, not a quantization defect)
 

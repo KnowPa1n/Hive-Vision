@@ -97,6 +97,13 @@ Detection gates at `MIN_AREA_PX 900..12000`, near‑square aspect, high fill, an
 | red    | 80%    | 26%       |
 | blue   | 82%    | 66%       |
 
+These are measured on the CV track's own dev video (576 YOLO truth frames; full
+detail in `docs/cv_detector_report.md`). When tracks are compared head-to-head on
+the shared 293-frame truth used by the Lab report and the shipping docs, this
+same shipped config scores yellow 62.0% / red 34.5% / blue 52.8% recall at
+10.5% / 8.6% / 11.1% precision — use that table when comparing against the Lab
+track.
+
 ## Tuning notes
 
 * Re‑tune live whenever lighting changes: `python tools/hsv_tuner.py path/to/frame.jpg`

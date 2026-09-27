@@ -48,6 +48,14 @@ Definitions (from `eval_cv_vs_yolo.py`):
 Firing volume (same config, no YOLO): **1.99 blobs/frame, output on 770/866
 frames** — vs ~50 raw threshold blobs/frame before gating.
 
+> **Comparison context:** this report measures the CV track on its own dev video
+> (the numbers above). When the tracks are compared **head-to-head on the shared
+> 293-frame truth** used by
+> [`../lab/docs/lab_detector_report.md`](../lab/docs/lab_detector_report.md), the same
+> shipped config scores yellow 62.0% / red 34.5% / blue 52.8% recall at
+> 10.5% / 8.6% / 11.1% precision. Footage skew, not a config change, explains the
+> difference — prefer the shared-truth figures for cross-track comparisons.
+
 ---
 
 ## Why balls are missed (per-FN reason, `reports/cv_fn_reasons_final.csv`)

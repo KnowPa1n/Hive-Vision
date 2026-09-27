@@ -17,7 +17,7 @@ Full docs: <https://sidhuharjas.gitbook.io/hive-vision>
   - [Control Hub track (OpenCV)](#control-hub-track-opencv)
   - [Control Hub track (Lab — shadow-robust chromaticity, no model)](#control-hub-track-lab--shadow-robust-chromaticity-no-model)
   - [Limelight 3A FTC integration](#limelight-3a-ftc-integration)
-- [Publishing the model for Limelight](#publishing-the-model-for-limelight)
+- [Publishing the model](#publishing-the-model)
 - [Performance](#performance)
   - [What these numbers mean](#what-these-numbers-mean)
 - [Repo layout](#repo-layout)
@@ -93,8 +93,10 @@ coprocessor); it never goes on a Limelight.
 - **Best-blob picker per color** — nearest to the real ball's area and
   roundness, penalized at the frame edge, so robot panels of the same hue
   don't win.
-- **Measured, not guessed** — recall vs the model's reference detections on real match
-  footage: yellow 69%, red 80%, blue 82% (full report in
+- **Measured, not guessed** — recall vs the model's reference detections on a
+  shared 293-frame truth: yellow 62%, red 35%, blue 53% (head-to-head in
+  [`lab/docs/lab_detector_report.md`](lab/docs/lab_detector_report.md); the CV track's own
+  866-frame measurement is in
   [`cv/docs/cv_detector_report.md`](cv/docs/cv_detector_report.md)).
 
 ## Model details
@@ -212,7 +214,7 @@ It compiles against FTC SDK 11.x + Pedro Pathing 2.x with a laptop self-test
 (`\.compile_check.cmd -runwrapper`). Full class reference and tuning table:
 [`ftc_ball_chase_lib/MODULES.md`](ftc_ball_chase_lib/MODULES.md).
 
-## Publishing the model for Limelight
+## Publishing the model
 
 `neural-net/weights/best.onnx` ships pre-exported for **ONNX Runtime hosts** — a dev
 PC, a Jetson, or another ONNX-capable coprocessor (Limelights are not
@@ -220,9 +222,11 @@ ONNX-capable; their neural detectors take `.tflite`/`.hef` only).
 (YOLOv8n, input 960×960, opset 12, ~12 MB). Its output is the **raw YOLO
 tensor** `output0` (1×7×18900) — anchor-row cx/cy/w/h + three class scores,
 not decoded detections; do the decode + NMS on the device or in your FTC
-pipeline. Upload this file in the Limelight web interface, select the model
-runner, and verify the input size and class names before connecting the
-FTC-side result reader. To re-export with different settings:
+pipeline. Upload `best.onnx` to an ONNX Runtime host (dev PC / Jetson /
+coprocessor) — the Limelight web interface only loads `.tflite`/`.hef`
+models, so it cannot run this file — and verify the input size and class
+names before connecting the FTC-side result reader. To re-export with
+different settings:
 
 ```bash
 python -m ultralytics.export model=neural-net/weights/best.pt format=onnx imgsz=960 opset=12
@@ -230,7 +234,7 @@ python -m ultralytics.export model=neural-net/weights/best.pt format=onnx imgsz=
 
 - `imgsz 960` is the quality setting used for development — tiny far-corner
   balls are recovered that 640 misses (see `neural-net/README.md`).
-- If your Limelight/coprocessor has an input-size limit, re-export at a
+- If your ONNX Runtime host has an input-size limit, re-export at a
   smaller `imgsz` (e.g. `640`); expect far-corner recall to drop.
 - Always re-export and re-upload after re-tuning on a new field.
 
@@ -247,9 +251,18 @@ Limelight API used by your FTC integration (see
 
 | Track | Recall | Precision | Note |
 |-------|--------|-----------|------|
-| Limelight (YOLOv8n, 960) | reference | reference | source of reference detections; also the "other YOLO" the Lab track was tuned with |
-| Control Hub (OpenCV) | yellow 68.7% / red 80.1% / blue 82.3% | 40 / 26 / 66% | treat as a candidate signal |
-| Control Hub (Lab) | yellow 45.5% / red 46.0% / blue 54.5% | 8 / 9 / 8% | raw per-frame **candidate** precision — Control Hub detections must be confirmed across several frames before the robot acts, so confirmed-target precision is far higher; measured on *newer* dev footage; dark-frame red recall 95.5% vs 40% for HSV (see [lab report](lab/docs/lab_detector_report.md)) |
+| PC / ONNX Runtime (YOLOv8n, 960) | reference | reference | source of reference detections; also the "other YOLO" the Control Hub tracks are tuned with |
+| Control Hub (OpenCV) | yellow 62.0% / red 34.5% / blue 52.8% | 10.5 / 8.6 / 11.1% | raw per-frame **candidate** precision — treat as a candidate signal |
+| Control Hub (Lab) | yellow 45.5% / red 46.0% / blue 54.5% | 7.5 / 8.7 / 8.1% | raw per-frame **candidate** precision — Control Hub detections must be confirmed across several frames before the robot acts, so confirmed-target precision is far higher; dark-frame red recall 95.5% vs 40% for HSV (see [lab report](lab/docs/lab_detector_report.md)) |
+
+Both Control Hub rows are measured **head-to-head on a shared 293-frame truth**
+(identical YOLO reference detections and geometry gates — see
+[`lab/docs/lab_detector_report.md`](lab/docs/lab_detector_report.md)). The CV track's
+own separate evaluation on its 866-frame dev video reports higher raw numbers —
+yellow 68.7% / red 80.1% / blue 82.3% recall at 39.9 / 26.0 / 65.5% precision —
+because that footage skews easier for HSV (see
+[`cv/docs/cv_detector_report.md`](cv/docs/cv_detector_report.md)). Prefer the
+shared-truth table when comparing one track against another.
 
 ### What these numbers mean
 
@@ -257,8 +270,8 @@ These are **detector benchmarks with a specific methodology, not end-to-end
 robot results.** Recall/precision above measure how well each track generates
 *ball candidate detections* against YOLO reference detections on development
 footage — they do **not** measure successful autonomous pickups, false pickup
-attempts, cycle time, or match performance. "Yellow 68.7% recall" does not mean
-"the robot picks up 68.7% of yellow balls." Treat the Control Hub numbers as
+attempts, cycle time, or match performance. "Yellow 62.0% recall" does not mean
+"the robot picks up 62.0% of yellow balls." Treat the Control Hub numbers as
 *candidate quality*: get from a candidate to a robot action via `BallTracker`'s
 target lock (and optionally its multi-frame confirmation), then measure pickup
 success on your own robot.
