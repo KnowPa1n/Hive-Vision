@@ -7,7 +7,28 @@ Full docs: <https://sidhuharjas.gitbook.io/hive-vision>
 <details>
 <summary><strong>Contents</strong></summary>
 
-[Deployment tradeoffs](#deployment-tradeoffs) · [Features](#features) · [Model details](#model-details) · [PC tools](#pc-tools) · [Quick start](#quick-start) · [Publishing the model for Limelight](#publishing-the-model-for-limelight) · [Performance](#performance) · [Repo layout](#repo-layout) · [Shipping](#shipping) · [Demo clips](#demo-clips) · [Community](#community) · [Updates and training data](#updates-and-training-data) · [Training-data workflow](#training-data-workflow) · [License](#license)
+- [Deployment tradeoffs](#deployment-tradeoffs)
+- [Features](#features)
+- [Model details](#model-details)
+- [PC tools](#pc-tools)
+  - [Licensing](#licensing)
+- [Quick start](#quick-start)
+  - [PC / ONNX Runtime track (YOLOv8n reference / dev tooling)](#pc--onnx-runtime-track-yolov8n-reference--dev-tooling)
+  - [Control Hub track (OpenCV)](#control-hub-track-opencv)
+  - [Control Hub track (Lab — shadow-robust chromaticity, no model)](#control-hub-track-lab--shadow-robust-chromaticity-no-model)
+  - [Limelight 3A FTC integration](#limelight-3a-ftc-integration)
+- [Publishing the model for Limelight](#publishing-the-model-for-limelight)
+- [Performance](#performance)
+  - [What these numbers mean](#what-these-numbers-mean)
+- [Repo layout](#repo-layout)
+- [Shipping](#shipping)
+- [Demo clips](#demo-clips)
+  - [Automatic video previews](#automatic-video-previews)
+  - [Image samples](#image-samples)
+- [Community](#community)
+- [Updates and training data](#updates-and-training-data)
+- [Training-data workflow](#training-data-workflow)
+- [License](#license)
 
 </details>
 
