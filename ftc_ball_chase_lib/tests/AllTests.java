@@ -111,6 +111,7 @@ public class AllTests {
         testPureValues();
         testTracker();
         testTrackerLockOn();
+        testTrackerConfirmation();
         testControllerConfigureAndAbort();
         testControllerSearchSweep();
         testControllerChaseAndPickup();
@@ -229,6 +230,60 @@ public class AllTests {
                 "a blue ball does not steal the locked red");
         sleepMs(320);
         check(t.update() == null, "lock dropped after LOCK_LOST_MS");
+    }
+
+    private static void testTrackerConfirmation() {
+        System.out.println("tracker: multi-frame confirmation gates the lock");
+        RobotHarness rig = new RobotHarness();
+        BallTracker t = rig.newTracker();
+        t.requireConfirmation(3, 6.0);
+        check(!t.hasConfirmedTarget(), "no target yet -> not confirmed");
+        check(t.getConfirmationFrames() == 3, "per-instance confirmation override in effect");
+
+        rig.source.dets = dets(red(0, -10, 0.9));
+        check(t.update() == null && !t.hasConfirmedTarget(), "frame 1 of 3: still confirming, update() holds null");
+        check(t.getConfirmStreak() == 1, "streak 1 after the seed frame");
+
+        rig.source.dets = dets(red(1, -9, 0.9));
+        check(t.update() == null && !t.hasConfirmedTarget(), "frame 2 of 3: still confirming");
+        check(t.getConfirmStreak() == 2, "streak 2");
+
+        rig.source.dets = dets(red(1, -9, 0.9));
+        BallTracker.Sighting s = t.update();
+        check(s != null && !s.predicted && t.hasConfirmedTarget(), "frame 3 of 3: adopted + confirmed");
+        check(s.classId == BallTracker.CLASS_RED, "confirmed lock is the red candidate");
+
+        rig.source.dets = dets();
+        BallTracker.Sighting coast = t.update();
+        check(coast != null && coast.predicted && t.hasConfirmedTarget(),
+                "confirmed lock coasts on last-known angles while briefly missing");
+
+        RobotHarness rigB = new RobotHarness();
+        BallTracker tB = rigB.newTracker();
+        tB.requireConfirmation(3, 6.0);
+        rigB.source.dets = dets(red(0, -10, 0.9));
+        tB.update();
+        check(tB.getConfirmStreak() == 1, "scenario B: seeded on red");
+        rigB.source.dets = dets(new BallTracker.RawDet(BallTracker.CLASS_BLUE, 0, -6, 0.95, 0.3));
+        check(tB.update() == null && tB.getConfirmStreak() == 0 && !tB.hasConfirmedTarget(),
+                "a different class during counting resets the streak");
+
+        RobotHarness rigC = new RobotHarness();
+        BallTracker tC = rigC.newTracker();
+        tC.requireConfirmation(3, 6.0);
+        rigC.source.dets = dets(red(0, -10, 0.9));
+        tC.update();
+        check(tC.getConfirmStreak() == 1, "scenario C: seeded on red at tx=0");
+        rigC.source.dets = dets(red(12, -10, 0.9));
+        check(tC.update() == null && tC.getConfirmStreak() == 0,
+                "an angular jump beyond CONFIRM_GATE_DEG resets the count");
+
+        RobotHarness rigD = new RobotHarness();
+        BallTracker tD = rigD.newTracker();
+        check(!tD.hasConfirmedTarget(), "confirmation off: nothing confirmed before the first frame");
+        rigD.source.dets = dets(red(0, -10, 0.9));
+        check(tD.update() != null && tD.hasConfirmedTarget(),
+                "confirmation off: first confident frame adopts and confirms immediately");
     }
 
     private static void testControllerConfigureAndAbort() {

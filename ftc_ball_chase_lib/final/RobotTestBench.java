@@ -230,6 +230,12 @@ public class RobotTestBench extends LinearOpMode {
         if (gamepad1.dpad_down)  tracker.setAllowedClasses(BallTracker.CLASS_BLUE);
         if (gamepad1.dpad_left)  tracker.setAllowedClasses(BallTracker.CLASSES_RED_BLUE);
         if (gamepad1.dpad_right) tracker.setAllowedClasses(BallTracker.CLASSES_ALL);
+        if (gamepad1.y && tracker.getConfirmationFrames() <= 1) {
+            tracker.requireConfirmation(4);   // arm 4-frame confirmation (default gate)
+        }
+        if (gamepad1.right_bumper && tracker.getConfirmationFrames() > 1) {
+            tracker.requireConfirmation(0);   // disarm back to instant adopt
+        }
         if (gamepad1.a) {
             List<BallTracker.RawDet> dets = tracker.getGatedDetections();
             BallTracker.RawDet best = null;
@@ -271,6 +277,11 @@ public class RobotTestBench extends LinearOpMode {
         } else {
             telemetry.addLine("target: none");
         }
+        if (tracker.getConfirmationFrames() > 1) {
+            telemetry.addData("confirm", "%s streak=%d/%d",
+                    tracker.hasConfirmedTarget() ? "CONFIRMED" : "confirming",
+                    tracker.getConfirmStreak(), tracker.getConfirmationFrames());
+        }
         telemetry.addData("staleness", "%d ms", tracker.getStalenessMs());
 
         if (selected == Test.DETECT) {
@@ -310,7 +321,7 @@ public class RobotTestBench extends LinearOpMode {
         switch (selected) {
             case WHEELS:  return "left stick drive+strafe, right stick X spin";
             case SPIN:    return "A=LF B=RF X=LB Y=RB at 0.4 (release = stop)";
-            case DETECT:  return "D-pad class filter; A = lockOn nearest; B = drop lock";
+            case DETECT:  return "D-pad class filter; A = lockOn nearest; B = drop lock; Y = confirm x4; RB = disarm";
             case CHASE:   return "hold A to chase 1 ball; release = abort";
             case INTAKE:  return "X on, Y off, B reverse";
             case MECANUM: return "hold A: wrapper scan+grab 1 ball; release = abort";

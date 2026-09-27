@@ -26,7 +26,7 @@ The shadow and outside-object false positives addressed in this release were rep
 
 ## Tooling
 
-* `detect_video_ssd_realtime.py` now runs the SSD alone — the YOLO/CV ground truth and lab overlay were removed, so the viewer reflects exactly what the Limelight 3A reports on robot.
+* `detect_video_ssd_realtime.py` now runs the SSD alone — the YOLO/CV reference overlay and lab overlay were removed, so the viewer reflects exactly what the Limelight 3A reports on robot.
 
 ## Included
 

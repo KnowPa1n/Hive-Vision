@@ -38,6 +38,13 @@ frame**, solving the two-ball flip-flop problem with a target lock:
   still fresh and the ball is momentarily missing, `update()` returns a
   `predicted` sighting with the last-known angles, so the driver keeps facing
   it instead of instantly re-targeting something else.
+- **Multi-frame confirmation** (optional) — `requireConfirmation(n)` makes the
+  tracker require the same ball — same class, within `CONFIRM_GATE_DEG` — be
+  seen `n` CONSECUTIVE frames before adopting it, so a single-frame false
+  positive (a red panel, a flicker) can't trigger a chase. While counting,
+  `update()` returns `null` and `hasConfirmedTarget()` is false; once `n`
+  frames are up it adopts and the normal lock takes over. `getConfirmStreak()`
+  shows progress for telemetry.
 
 **Detection source** — detections come from a `DetectionSource` (defaults to
 `LimelightSource` wrapping the Limelight; a scripted source drives this on a

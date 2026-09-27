@@ -3,8 +3,24 @@
 Shared perception + drive logic to make a robot pick up BioBuzz's game
 elements (`yellow_pollen` / `red_nectar` / `blue_nectar`) using a Limelight 3A SSD
 neural detector. Everything is camera-relative or field-coordinate; no extra
-helper download needed (the FTC SDK ships `Limelight3A` natively). Works with
-FTC SDK **11.x** and **Pedro Pathing 2.x**.
+helper download needed (the FTC SDK ships `Limelight3A` natively).
+
+## Compatibility (what this library is verified against)
+
+| Component | Tested version | Notes |
+|-----------|----------------|-------|
+| FTC SDK (`RobotCore` / `Hardware`) | **11.2.1** | 11.x expected; compile-checked against 11.2.1 |
+| Pedro Pathing (`core` / `ftc`) | **2.1.2** | needed only for `BallChaseFollower` / `BallHunt` / the wrapper's `PedroWrangler` |
+| Limelight | **3A** (SSD neural on CPU) | [`best_limelight3a_ssd_mobilenetv2_300x300.tflite`](../neural-net/weights/) |
+| Java / Android | FTC's bundled toolchain | Java 17 toolchain compiled by this repo's `compile_check.cmd` |
+
+**If you use different versions, compatibility is not guaranteed.** The
+compile-check and all self-tests run against exactly the versions above.
+Tuning in a new SDK year on Pedro 3.x or different Limelight firmware may
+require touching `HiveConfig` only — the API surface is stable.
+
+New here? Start with the [5-minute quick start](../docs/quick_start.md) and the
+[calibration + coordinate conventions](../docs/calibration.md).
 
 ## Layout
 
@@ -77,6 +93,10 @@ Fluent options: `.reds()` `.blues()` `.yellows()` `.alliance()` (default)
 Loop-driven users can instead `start()` / `update()` / `abort()` / `isDone()`.
 
 ## Calibrate before running
+
+All of these live in **one file** — `final/HiveConfig.java`. The literal
+measurement procedure for each one plus the coordinate sign conventions is in
+[../docs/calibration.md](../docs/calibration.md).
 
 | Constant | Where | Meaning |
 |----------|-------|---------|

@@ -19,16 +19,16 @@ lab/
   TeamCode/LabBallDetectorPipeline.java   drop-in VisionProcessor (Control Hub)
   tools/
     lab_lib.py            shared core (features, mask, blobs, adaptive gain)
-    fit_lab_from_yolo.py  learn hue bands/floors/gates from the YOLO truth
-    eval_lab_vs_yolo.py   recall/precision + dark-frame recall vs YOLO truth
+    fit_lab_from_yolo.py  learn hue bands/floors/gates from the YOLO reference detections
+    eval_lab_vs_yolo.py   recall/precision + dark-frame recall vs YOLO reference detections
     sweep_lab.py          quick threshold sweep (scl × floor)
-    truth_lib.py          generates + caches the YOLO truth (conf ≥ 0.35)
+    truth_lib.py          generates + caches the YOLO reference detections (conf ≥ 0.35)
     lab_tuner.py          live chromaticity tuner (image or webcam)
-    detect_video_realtime.py  step-through viewer with YOLO-truth overlay
+    detect_video_realtime.py  step-through viewer with YOLO-reference overlay
     realtime_lab.py       live viewer (video or webcam)
     lab_tuned.json        shipped learned constants
   docs/
-    yolo_truth_lab.json   cached YOLO truth (293 frames, 400 boxes)
+    yolo_truth_lab.json   cached YOLO reference detections (293 frames, 400 boxes)
     lab_detector_report.md  evaluation write-up
 ```
 
@@ -48,7 +48,7 @@ LabBallDetectorPipeline.BallBlob ball = pipeline.bestOf(LabBallDetectorPipeline.
 if (ball != null) { /* steer using ball.cxNorm, ball.cyNorm */ }
 ```
 
-Confirm a candidate across a few frames before moving — the detector is a candidate signal, not ground truth (same contract as the HSV track).
+Confirm a candidate across a few frames before moving — the detector is a candidate signal, not a confirmed target (same contract as the HSV track).
 
 Area gates are stored per-1080p and scaled automatically to the live camera resolution; `aspect`/`fill` are already scale-free.
 
@@ -70,6 +70,6 @@ python tools/fit_lab_from_yolo.py --source path/to/match_raw.mp4 --out lab_tuned
 
 Copy the printed values into `LabBallDetectorPipeline.java`'s `YELLOW_LO`, `RED_LO`, `BLUE_LO`, `YELLOW_SAT`, `RED_SAT`, `BLUE_SAT` and the `REF_L` constants.
 
-## Ground truth / license notes
+## Reference detections / license notes
 
 `docs/yolo_truth_lab.json` is derived by running the **flagship YOLO model** (`../neural-net/weights/best.pt`, Ultralytics, AGPL-3.0 — see [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md)) over development footage; the JSON itself is a list of frame-wise ball boxes and carries no model weights.

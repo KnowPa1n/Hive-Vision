@@ -12,7 +12,7 @@ The Control Hub track of Hive Vision. Raw-OpenCV alternative to the Limelight tr
 | ------------------------------------ | ----------------------------------------------------------------------------------------------- |
 | `tools/hsv_tuned.json`               | **Shipped config** (YOLO‑learned ranges + gates) — what the Java pipeline uses.                 |
 | `tools/fit_hsv_from_yolo.py`         | Mines HSV ranges straight from the bundled model's detections on your footage.                  |
-| `tools/eval_cv_vs_yolo.py`           | Scores any config vs the model's ground truth (uses the cached `docs/yolo_truth.json`; \~25 s). |
+| `tools/eval_cv_vs_yolo.py`           | Scores any config vs the model's reference detections (uses the cached `docs/yolo_truth.json`; \~25 s). |
 | `tools/sample_hsv.py`                | Mines per‑color HSV ranges from a YOLO label set + images (needs your dataset).                 |
 | `tools/hsv_tuner.py`                 | Live tuner: drag H/S/V trackbars to get a mask that only lights up the ball.                    |
 | `tools/realtime_cv.py`               | Viewer for the on‑hub detector over your own footage (same keys as the model viewer).           |
@@ -88,7 +88,7 @@ Adjust `MIN_AREA_PX`, `MAX_AREA_PX`, `EXPECT_*_AREA` in the Java file accordingl
 * S/V floors clamped to recall‑friendly values (V≈45, S≈60‑90)
 * expected real‑ball area per color (yellow 3500 px, red/blue 4200 px at 1080p)
 
-Detection gates at `MIN_AREA_PX 900..12000`, near‑square aspect, high fill, and picks the **most ball‑y** blob per color (closest to expected area, roundest, penalised at frame edge). Measured vs YOLO ground truth on the dev video:
+Detection gates at `MIN_AREA_PX 900..12000`, near‑square aspect, high fill, and picks the **most ball‑y** blob per color (closest to expected area, roundest, penalised at frame edge). Measured vs YOLO reference detections on the dev video:
 
 | color  | recall | precision |
 | ------ | ------ | --------- |

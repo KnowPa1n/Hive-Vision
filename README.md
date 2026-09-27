@@ -28,7 +28,7 @@ Note: no Limelight runs ONNX — Limelight neural detectors accept `.tflite` or
 Hailo `.hef` only. The Limelight 3A runs **SSD-MobileNetV2 in place of YOLO**
 (see `neural-net/README.md`); the YOLOv8n ONNX lives on a **PC / ONNX Runtime
 host**. The Control Hub **Lab** track was tuned using this repo's *other*
-YOLO — the YOLOv8n reference model — as its ground truth.
+YOLO — the YOLOv8n reference model — to generate its reference detections.
 
 ## Deployment tradeoffs
 
@@ -65,7 +65,7 @@ coprocessor); it never goes on a Limelight.
 - **Best-blob picker per color** — nearest to the real ball's area and
   roundness, penalized at the frame edge, so robot panels of the same hue
   don't win.
-- **Measured, not guessed** — recall vs model ground truth on real match
+- **Measured, not guessed** — recall vs the model's reference detections on real match
   footage: yellow 69%, red 80%, blue 82% (full report in
   [`cv/docs/cv_detector_report.md`](cv/docs/cv_detector_report.md)).
 
@@ -218,9 +218,21 @@ Limelight API used by your FTC integration (see
 
 | Track | Recall | Precision | Note |
 |-------|--------|-----------|------|
-| Limelight (YOLOv8n, 960) | reference | reference | source of ground truth; also the "other YOLO" the Lab track was tuned with |
+| Limelight (YOLOv8n, 960) | reference | reference | source of reference detections; also the "other YOLO" the Lab track was tuned with |
 | Control Hub (OpenCV) | yellow 68.7% / red 80.1% / blue 82.3% | 40 / 26 / 66% | treat as a candidate signal |
 | Control Hub (Lab) | yellow 45.5% / red 46.0% / blue 54.5% | 8 / 9 / 8% | measured on *newer* dev footage; dark-frame red recall 95.5% vs 40% for HSV (see [lab report](lab/docs/lab_detector_report.md)) |
+
+### What these numbers mean
+
+These are **detector benchmarks with a specific methodology, not end-to-end
+robot results.** Recall/precision above measure how well each track generates
+*ball candidate detections* against YOLO reference detections on development
+footage — they do **not** measure successful autonomous pickups, false pickup
+attempts, cycle time, or match performance. "Yellow 68.7% recall" does not mean
+"the robot picks up 68.7% of yellow balls." Treat the Control Hub numbers as
+*candidate quality*: get from a candidate to a robot action via `BallTracker`'s
+target lock (and optionally its multi-frame confirmation), then measure pickup
+success on your own robot.
 
 ## Repo layout
 
@@ -241,7 +253,7 @@ hive-vision/
   lab/                        Control Hub track (Lab chromaticity)
     TeamCode/                 LabBallDetectorPipeline.java (drop-in processor)
     tools/                    YOLO-learned config, fitter, sweep, tuner, viewer
-    docs/                     evaluation report, cached YOLO truth
+    docs/                     evaluation report, cached YOLO reference detections
   ftc_ball_chase_lib/          FTC-side library (BallTracker + chase drivers)
     final/                     BallTracker, BallChaseController/Follower, BallHunt, BallMath
     wrapper/                   fluent verb API over Pedro/mecanum drivetrains

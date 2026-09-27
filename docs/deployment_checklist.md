@@ -42,20 +42,21 @@ device or FTC pipeline must decode and NMS those itself.
 ## The three tracks, compared
 
 Measured against a 293-frame real-match dataset that the flagship YOLO scored
-at conf ≥ 0.35 (identical ground truth for both color detectors; all three
+at conf ≥ 0.35 (identical reference detections for both color detectors; all three
 share the same geometry gates):
 
 | Tracker | Runs on | Principle | Yellow rec/prec | Red rec/prec | Blue rec/prec | Dark-red recall |
 |---------|---------|-----------|-----------------|--------------|---------------|-----------------|
-| **YOLO** | PC / ONNX Runtime (reference — not a Limelight) | shape + context (CNN) | — ground truth — | — ground truth — | — ground truth — | ~100% |
+| **YOLO** | PC / ONNX Runtime (reference — not a Limelight) | shape + context (CNN) | — reference — | — reference — | — reference — | ~100% |
 | **HSV (cv/)** | Control Hub | tuned HSV window | 62.0 / 10.5 | 34.5 / 8.6 | 52.8 / 11.1 | 40.0% |
 | **Lab (lab/)** | Control Hub | learned Lab hue band + adaptive chroma floor | 45.5 / 7.5 | 46.0 / 8.7 | 54.5 / 8.1 | **95.5%** |
 
 What the numbers mean:
 
+- **These are candidate-detection benchmarks against YOLO reference detections, not end-to-end results.** They measure whether each track *sees a ball candidate* on development footage — not successful autonomous pickups, false pickup attempts, cycle time, or match performance. A 68.7% recall does not mean the robot picks up 68.7% of yellow balls.
 - **YOLO is the reference.** It is the only track that finds shapes, so it is
   the only one that recovers low-chroma / deep-shadow balls. Treat its output
-  as truth and the Control Hub tracks as candidate signals (7–11% precision on
+  as the reference and the Control Hub tracks as candidate signals (7–11% precision on
   this footage — the field is full of yellow/red/blue patches).
 - **Lab beats HSV on red** in recall and precision, and crushes it in shadows
   (95.5% vs 40% dark-frame recall). That is its purpose: Lab hue is

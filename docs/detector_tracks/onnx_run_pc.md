@@ -62,7 +62,7 @@ python -c "from ultralytics import YOLO; YOLO('neural-net/weights/best.onnx').pr
   [SSD-MobileNetV2](limelight_3a_ssd.md) instead.
 - **`imgsz` matters**: 960 catches the tiny far-corner balls; 640 saves memory
   but you lose far-corner recall.
-- This YOLO model is the **ground truth** the Control Hub tracks are
+- This YOLO model is the **reference detector** the Control Hub tracks are
   tuned/scored against — use it when you're measuring a color detector, not
   the hub detector itself.
 

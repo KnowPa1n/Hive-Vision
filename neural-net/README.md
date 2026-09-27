@@ -65,4 +65,4 @@ python -m ultralytics.export model=weights/best.pt format=onnx imgsz=960 opset=1
 
 ## Accuracy context
 
-This model's detections are the _ground truth_ every Hive Vision Control Hub metric is measured against — see `cv/docs/cv_detector_report.md`.
+This model's detections are the **reference detections** every Hive Vision Control Hub metric is measured against — see `cv/docs/cv_detector_report.md`.

@@ -52,6 +52,6 @@ python -c "from ultralytics import YOLO; YOLO('neural-net/weights/best.onnx').pr
 * **Class order**: `yellow_pollen`=0, `red_nectar`=1, `blue_nectar`=2.
 * **Never upload ONNX to a Limelight** — Limelight neural detectors accept `.tflite`/`.hef` only. The 3A runs [SSD-MobileNetV2](../limelight_3a_ssd/) instead.
 * **`imgsz` matters**: 960 catches the tiny far-corner balls; 640 saves memory but you lose far-corner recall.
-* This YOLO model is the **ground truth** the Control Hub tracks are tuned/scored against — use it when you're measuring a color detector, not the hub detector itself.
+* This YOLO model is the **reference detector** the Control Hub tracks are tuned/scored against — use it when you're measuring a color detector, not the hub detector itself.
 
 Full model details, exports, and TFLite test tooling are in [neural-net/README.md](https://github.com/sidhuharjas/Hive-Vision/blob/main/neural-net/README.md).

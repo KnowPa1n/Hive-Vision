@@ -41,6 +41,34 @@ frame** (`Sighting`), solving the two-ball flip-flop problem.
 | `void reset()` | drop the lock + last sighting — call when starting a fresh hunt |
 | `void lockOn(int classId, double txDeg, double tyDeg, double confidence)` | pin the lock to a specific ball (used by the chase steps' interior logic) |
 
+## Multi-frame confirmation
+
+A single-frame detection can be a false positive (think red robot panel in the
+corner). `requireConfirmation(n)` makes the tracker hold off until the **same
+ball — same class, within the gate — has been seen `n` consecutive frames**.
+
+| Method | What it does |
+|--------|--------------|
+| `BallTracker requireConfirmation(int frames)` | require `frames` consecutive sightings before adopting (fluent) |
+| `BallTracker requireConfirmation(int frames, double gateDeg)` | same, with a custom angular gate |
+| `boolean hasConfirmedTarget()` | true while a **real** locked target is live — the recommended gate for acting |
+| `int getConfirmStreak()` | consecutive frames the current candidate has passed (0 = off / no candidate) |
+| `int getConfirmationFrames()` | frames this tracker currently requires (override or default) |
+
+With confirmation on, `update()` returns `null` while the tracker is still
+counting, so callers naturally hold off; the count restarts if the ball
+vanishes, changes class, or jumps past the gate. With confirmation **off**, a
+first confident detection is "confirmed" at once, so
+`if (tracker.hasConfirmedTarget()) …` works either way.
+
+```java
+tracker.requireConfirmation(4, 12.0);   // same ball 4 frames, 12° gate
+while (opModeIsActive()) {
+    tracker.update();
+    if (tracker.hasConfirmedTarget()) chase();   // only a confirmed ball is chased
+}
+```
+
 ### `Sighting`
 
 Fields: `classId`, `txDeg` (+ = right), `tyDeg` (+ = up), `confidence`,
@@ -69,6 +97,8 @@ Gating first (`MIN_CONF`, `MAX_STALENESS_MS` — the SDK reports staleness in
 | `MAX_STALENESS_MS` | 120 | drop frames older than this |
 | `LOCK_GATE_DEG` | 12.0 | max frame-to-frame angular jump to count as the same ball |
 | `LOCK_LOST_MS` | 300 | drop the lock if unmatched this long |
+| `CONFIRM_FRAMES` | 0 | require the same ball N consecutive frames before adopting (0/1 = off) |
+| `CONFIRM_GATE_DEG` | 12.0 | max angular jump between confirming frames |
 | `CAM_PITCH_DEG`, `CAM_H`, `BALL_H` | 25.0, 9.2, 3.0 | camera tilt below horizontal (deg), lens height, ball-center height (in) |
 | `CAM_X_OFFSET`, `CAM_Y_OFFSET` | 0.0, 0.0 | camera FORWARD / LEFT of robot center (in) — applied when projecting field coords |
 

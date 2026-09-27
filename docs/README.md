@@ -2,10 +2,13 @@
 
 Hive Vision is a real-time FTC ball-detection suite (`yellow_pollen`, `red_nectar`, `blue_nectar`). The repo README is the source of truth for everything technical; this book exists to (a) help a new team pick a track and (b) give step-by-step setup instructions you can follow with the camera on the bench.
 
+* [5-minute quick start](quick_start.md) — zero to a tracking robot
+* [Calibration & coordinates](calibration.md) — how to measure `CAM_*`, and the sign conventions
 * [Which detector track?](detector_tracks/) — the decision guide
 * [Limelight 3A (SSD)](detector_tracks/limelight_3a_ssd/) — [set it up](detector_tracks/limelight_3a_ssd/limelight_3a_setup.md)
 * [PC / ONNX Runtime (YOLO)](detector_tracks/onnx_pc/) — [run it on a PC](detector_tracks/onnx_pc/onnx_run_pc.md)
 * [Control Hub (OpenCV + Lab)](detector_tracks/control_hub/) — [HSV setup](detector_tracks/control_hub/hub_hsv_setup.md) · [Lab setup](detector_tracks/control_hub/hub_lab_setup.md)
+* [Known limitations](known_limitations.md) — what the detectors can't do, and the fixes
 * [Collecting training data](training_data.md)
 * API — the `ftc_ball_chase_lib` classes (the API tab of this book)
 * [Deployment checklist](deployment_checklist.md) — what ships where

@@ -20,17 +20,17 @@ Class order is `yellow_pollen`, `red_nectar`, `blue_nectar` — keep `labels.txt
 
 ## The three tracks, compared
 
-Measured against a 293-frame real-match dataset that the flagship YOLO scored at conf ≥ 0.35 (identical ground truth for both color detectors; all three share the same geometry gates):
+Measured against a 293-frame real-match dataset that the flagship YOLO scored at conf ≥ 0.35 (identical reference detections for both color detectors; all three share the same geometry gates):
 
 | Tracker        | Runs on                                         | Principle                                    | Yellow rec/prec  | Red rec/prec     | Blue rec/prec    | Dark-red recall |
 | -------------- | ----------------------------------------------- | -------------------------------------------- | ---------------- | ---------------- | ---------------- | --------------- |
-| **YOLO**       | PC / ONNX Runtime (reference — not a Limelight) | shape + context (CNN)                        | — ground truth — | — ground truth — | — ground truth — | \~100%          |
+| **YOLO**       | PC / ONNX Runtime (reference — not a Limelight) | shape + context (CNN)                        | — reference — | — reference — | — reference — | \~100%          |
 | **HSV (cv/)**  | Control Hub                                     | tuned HSV window                             | 62.0 / 10.5      | 34.5 / 8.6       | 52.8 / 11.1      | 40.0%           |
 | **Lab (lab/)** | Control Hub                                     | learned Lab hue band + adaptive chroma floor | 45.5 / 7.5       | 46.0 / 8.7       | 54.5 / 8.1       | **95.5%**       |
 
 What the numbers mean:
 
-* **YOLO is the reference.** It is the only track that finds shapes, so it is the only one that recovers low-chroma / deep-shadow balls. Treat its output as truth and the Control Hub tracks as candidate signals (7–11% precision on this footage — the field is full of yellow/red/blue patches).
+* **YOLO is the reference.** It is the only track that finds shapes, so it is the only one that recovers low-chroma / deep-shadow balls. Treat its output as the reference and the Control Hub tracks as candidate signals (7–11% precision on this footage — the field is full of yellow/red/blue patches).
 * **Lab beats HSV on red** in recall and precision, and crushes it in shadows (95.5% vs 40% dark-frame recall). That is its purpose: Lab hue is shadow-invariant and its chroma floor adapts downward per frame.
 * **HSV keeps yellow and blue precision.** Its yellow window was hand-tuned on luckier footage; Lab is rigidly fit on this one.
 * Pick a track per robot, not per color: Lab when balls sit in shadows, HSV when you want the absolute cheapest path. Never rely on a color detector in the darkest corners — that is YOLO's job.

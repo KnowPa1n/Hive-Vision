@@ -58,7 +58,7 @@ frame spam (green/yellow mats for yellow, orange/amber chrome for red,
 blue-violet field fabric for blue) with a net recall *gain*, because a
 cleaner mask stops chrome blobs from beating the real ball in the picker.
 
-## Measured vs flagship YOLO truth (identical ground truth for Lab and HSV)
+## Measured vs flagship YOLO reference (identical reference detections for Lab and HSV)
 
 Same 293 truth frames, same IoU/match rule, same gating (geometry gates
 identical; only the color model differs):

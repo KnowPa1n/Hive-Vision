@@ -13,7 +13,7 @@ Short version:
 
 Two things to know, stated plainly:
 
-- This is the **ground truth** the Control Hub tracks are tuned/scored against —
+- This is the **reference detector** the Control Hub tracks are tuned/scored against —
   use it when you're measuring a color detector, not the hub detector itself.
 - Drop to `imgsz 640` only if your host is memory-bound; you lose far-corner
   recall.

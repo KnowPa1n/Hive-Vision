@@ -1,6 +1,8 @@
 # Table of contents
 
 * [Overview](README.md)
+* [5-minute quick start](quick_start.md)
+* [Calibration & coordinates](calibration.md)
 * [Which detector track?](detector_tracks/README.md)
   * [Limelight 3A (SSD)](detector_tracks/limelight_3a_ssd/README.md)
     * [Set up the Limelight 3A](detector_tracks/limelight_3a_ssd/limelight_3a_setup.md)
@@ -9,5 +11,6 @@
   * [Control Hub (OpenCV + Lab)](detector_tracks/control_hub/README.md)
     * [Set up the HSV track](detector_tracks/control_hub/hub_hsv_setup.md)
     * [Set up the Lab track](detector_tracks/control_hub/hub_lab_setup.md)
+* [Known limitations](known_limitations.md)
 * [Collecting training data](training_data.md)
 * [Deployment checklist](deployment_checklist.md)

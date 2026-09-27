@@ -58,6 +58,8 @@ public final class HiveConfig {
     public static long   MAX_STALENESS_MS  = 120;  // Limelight SDK staleness in ms ("Is The Data Fresh?")
     public static double LOCK_GATE_DEG     = 12.0; // max frame-to-frame angular jump to count as "same ball"
     public static long   LOCK_LOST_MS      = 300;  // drop the lock if it isn't matched for this long
+    public static int    CONFIRM_FRAMES    = 0;    // require the same ball N CONSECUTIVE frames before adopting; 0 = off
+    public static double CONFIRM_GATE_DEG  = 12.0; // max angular jump between confirming frames, deg
 
     /* ---------------- chase tuning (controller + follower + wrapper) -------- */
 

@@ -39,6 +39,10 @@ public class BallTracker {
     public static double LOCK_GATE_DEG = HiveConfig.LOCK_GATE_DEG; // max frame-to-frame angular jump to count as "same ball"
     public static long   LOCK_LOST_MS  = HiveConfig.LOCK_LOST_MS;  // drop the lock if it isn't matched for this long
 
+    /* ---- multi-frame confirmation (guards the lock vs single-frame false positives) ---- */
+    public static int    CONFIRM_FRAMES   = HiveConfig.CONFIRM_FRAMES;   // same ball N CONSECUTIVE frames before adopt; 0/1 = off
+    public static double CONFIRM_GATE_DEG = HiveConfig.CONFIRM_GATE_DEG; // max angular jump between confirming frames, deg
+
     /** One chosen ball this frame. `predicted` sightings carry last-known angles
      *  while the locked ball is momentarily missing (fresh lock only). */
     public static class Sighting {
@@ -114,6 +118,13 @@ public class BallTracker {
     private Sighting locked = null;                 // last real sighting of the locked ball
     private Sighting last = null;                   // most recent result of update()
 
+    /* ---- multi-frame confirmation state ---- */
+    private int    confirmFrames  = 0;              // per-instance override; 0 = use CONFIRM_FRAMES
+    private double confirmGateDeg = 0;              // per-instance override; 0 = use CONFIRM_GATE_DEG
+    private int    confirmStreak  = 0;              // consecutive frames the candidate ball has been seen
+    private Integer confirmClass = null;            // candidate's class (null = no candidate yet)
+    private Double  confirmTx = null, confirmTy = null; // candidate's last angular position
+
     public BallTracker(Limelight3A limelight) {
         this(new LimelightSource(limelight));
     }
@@ -153,6 +164,46 @@ public class BallTracker {
         lockTy = null;
         locked = null;
         last = null;
+        resetCandidate();
+    }
+
+    /** Arm multi-frame confirmation: a ball must be seen `frames` CONSECUTIVE
+     *  frames (same class, angularly within CONFIRM_GATE_DEG of its last
+     *  position) before `update()` adopts it as the locked target — a deliberate
+     *  guard against single-frame false positives (e.g. red robot panels).
+     *  Callers can hold off acting via hasConfirmedTarget(). Returns this
+     *  tracker for fluency: `tracker.requireConfirmation(4, 12.0);` */
+    public BallTracker requireConfirmation(int frames) {
+        this.confirmFrames = frames;
+        return this;
+    }
+
+    public BallTracker requireConfirmation(int frames, double gateDeg) {
+        requireConfirmation(frames);
+        if (gateDeg > 0) this.confirmGateDeg = gateDeg;
+        return this;
+    }
+
+    /** True while a REAL target track is live. Note `locked` only ever holds
+     *  real sightings (never `predicted` coasters), so this doubles as the
+     *  "same ball survived confirmation" gate: while confirmation is armed and
+     *  the tracker is still counting frames, `locked` is null and this is false.
+     *  With confirmation off, a first confident detection is confirmed at once,
+     *  so `if (tracker.hasConfirmedTarget()) chase();` works either way. */
+    public boolean hasConfirmedTarget() {
+        return locked != null;
+    }
+
+    /** Consecutive frames the current candidate has already passed.
+     *  0 when confirmation is off or no candidate is being counted. */
+    public int getConfirmStreak() {
+        return confirmStreak;
+    }
+
+    /** Frames this tracker currently requires before adopting a target
+     *  (per-instance override, else the static CONFIRM_FRAMES default). */
+    public int getConfirmationFrames() {
+        return effConfirmFrames();
     }
 
     /** Poll the Limelight and pick this frame's ball. Returns null only when
@@ -260,7 +311,71 @@ public class BallTracker {
         if (locked != null && lockAge.milliseconds() <= LOCK_LOST_MS) {
             return lockedPredicted();                    // fresh lock, ball missing: hold, don't flip
         }
+        if (effConfirmFrames() > 1) {
+            return confirmStep(dets);                    // confirmation armed: N-frame gate first
+        }
         return adopt(nearest);                           // no lock, or stale: take the nearest
+    }
+
+    /** Confirmation gate that runs only on a fresh (unlocked) target: adopt a
+     *  ball only once the SAME ball — same class, within CONFIRM_GATE_DEG of
+     *  where it was the frame before — has been seen `effConfirmFrames()`
+     *  consecutive frames. Returns null while counting (callers hold off), and a
+     *  real adopted sighting on the frame the count reaches N, which then flows
+     *  into the normal target lock. Any disappearance, class change, or jump
+     *  beyond the gate restarts the count. */
+    private Sighting confirmStep(List<RawDet> dets) {
+        RawDet match = null;
+        if (confirmClass != null) {
+            double gate = effConfirmGate();
+            double bestJump = Double.MAX_VALUE;
+            for (RawDet d : dets) {
+                if (!allowed.contains(d.classId) || d.classId != confirmClass) continue;
+                if (d.confidence < MIN_CONF) continue;
+                double jump = Math.hypot(d.txDeg - confirmTx, d.tyDeg - confirmTy);
+                if (jump < bestJump) { bestJump = jump; match = d; }
+            }
+            if (match == null || bestJump > gate) {
+                resetCandidate();                        // vanished or jumped: restart the count
+                return null;
+            }
+            confirmTx = match.txDeg;
+            confirmTy = match.tyDeg;
+            confirmStreak++;
+            if (confirmStreak >= effConfirmFrames()) {
+                confirmClass = null;                     // candidate promoted to the lock; keep streak
+                confirmTx = null;
+                confirmTy = null;
+                return adopt(match);
+            }
+            return null;                                 // still confirming
+        }
+        for (RawDet d : dets) {                          // first frame: seed on the nearest confident detection
+            if (!allowed.contains(d.classId)) continue;
+            if (d.confidence < MIN_CONF) continue;
+            if (match == null || d.tyDeg < match.tyDeg) match = d;
+        }
+        if (match == null) return null;
+        confirmClass = match.classId;
+        confirmTx = match.txDeg;
+        confirmTy = match.tyDeg;
+        confirmStreak = 1;
+        return null;
+    }
+
+    private int effConfirmFrames() {
+        return confirmFrames > 0 ? confirmFrames : CONFIRM_FRAMES;
+    }
+
+    private double effConfirmGate() {
+        return confirmGateDeg > 0 ? confirmGateDeg : CONFIRM_GATE_DEG;
+    }
+
+    private void resetCandidate() {
+        confirmClass = null;
+        confirmTx = null;
+        confirmTy = null;
+        confirmStreak = 0;
     }
 
     /** Lock onto a real detection and remember its angles + age. */
@@ -294,6 +409,7 @@ public class BallTracker {
         lockTx = null;
         lockTy = null;
         locked = null;
+        resetCandidate();
     }
 
     private static Set<Integer> setOf(Integer... ids) {

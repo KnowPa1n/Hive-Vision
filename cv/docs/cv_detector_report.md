@@ -1,4 +1,4 @@
-# CV Detector Report — HSV color detector vs YOLO truth
+# CV Detector Report — HSV color detector vs YOLO reference detections
 
 **Date:** 2026-09-13  ·  **Video:** development match video (866 frames, 1920×1080)
 **Config evaluated:** `OpenCV-Ball-Detector/tools/hsv_tuned.json` (final shipped config)
@@ -30,7 +30,7 @@ Mirrored in: `hsv_tuned.json`, `tools/realtime_cv.py`, `hsv_tuner.py`,
 
 ---
 
-## Results vs YOLO ground truth (conf ≥ 0.35, ball-like boxes)
+## Results vs YOLO reference detections (conf ≥ 0.35, ball-like boxes)
 
 | color | yolo frames | tp | fn | fp | precision | recall |
 |-------|-------------|----|----|----|-----------|--------|
@@ -80,7 +80,7 @@ Conclusions:
 
 `reports/cv_fn_debug_final/` — 169 annotated frames for the **final shipped
 config** (122 `wrongbest_`, 47 `fn_`):
-- `fn_<color>_<frame>.jpg`: YOLO truth green; CV produced nothing.
+- `fn_<color>_<frame>.jpg`: YOLO reference detections in green; CV produced nothing.
 - `wrongbest_<color>_<frame>.jpg`: green = YOLO box, orange = all gated CV
   blobs, white border = blob sitting on the ball that the best-of **didn't**
   pick, blue border = the blob best-of *did* pick.
@@ -102,7 +102,7 @@ variants.)
   tuner, render-range miner.
 - `TeamCode/BallDetectorPipeline.java` — Java port (constants, gates, mixed
   `bestOf()`).
-- `reports/yolo_truth.json` — cached YOLO ground truth (576 frames).
+- `reports/yolo_truth.json` — cached YOLO reference detections (576 frames).
 - `reports/cv_fn_reasons_final.csv` — the FN reason table source.
 
 ---
@@ -117,7 +117,7 @@ TP total). Rejected. **Final weights: `--fill-w 4 --edge-w 1.0`.**
 
 1. **Eyeball** `reports/cv_fn_debug_final/` frames to confirm the scoring
    story (the developer tool used here can't render images, so this is a
-   human check). Green = YOLO truth, orange = gated CV blobs, blue = picked
+   human check). Green = YOLO reference detections, orange = gated CV blobs, blue = picked
    blob, white = blob-on-ball that wasn't picked.
 2. **Robot side (done as guidance):** `BallDetectorPipeline.java` `bestOf()`
    javadoc + README now carry the candidate-confirmation pattern — require
