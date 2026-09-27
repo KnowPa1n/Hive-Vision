@@ -102,7 +102,8 @@ h.abort();
 | `setAllowedClasses(Set/Integer...)` | forwards to the tracker (alliance filter) |
 | `setMaxPickups(int n)` | stop after `n` pickups |
 | `setTimeBudgetSec(double s)` | hard hunt budget before handing back control |
-| `getPickups()` / `getState()` / `isDone()` / `isActive()` | query |
+| `setPickupConfirmer(c)` | optional sensor hook (`boolean isBallInIntake()`) — the pickup only counts if it fires within `PICKUP_CONFIRM_MS`; otherwise it's a failed pickup (no credit, lock dropped, re-plan) |
+| `getPickups()` / `getFailedPickups()` / `getState()` / `isDone()` / `isActive()` | query |
 | `start()` / `abort()` / `update()` / `addTelemetry(t)` | lifecycle (call `update()` every loop; never own `follower.update()`) |
 
 Field projection uses `HFOV_DEG`/`VFOV_DEG` plus the camera mount offsets
@@ -126,9 +127,11 @@ int picked = new BallHunt(follower, limelight, intake)
 | `.everything()` | red + blue + neutral yellow |
 | `.collect(int n)` | balls per hunt (`n <= 0` = unlimited) |
 | `.within(double sec)` | hard time budget (default 15 s) |
+| `.confirmWhen(PickupConfirmer)` | require a physical confirmation (beam break / current spike) before crediting a pickup |
 | `.go(LinearOpMode)` | **blocking**: runs the hunt, streams telemetry, aborts cleanly, returns balls picked |
 | `start()` / `update()` / `abort()` / `isDone()` | loop-driven alternative (you keep your loop; you own `follower.update()`) |
 | `got()` | balls picked so far |
+| `gotFailed()` | picks attempted but never confirmed (missed grabs) |
 | `state()` / `addTelemetry(t)` | current state / telemetry |
 
 `BallHunt(Follower, Limelight3A, DcMotor)` and

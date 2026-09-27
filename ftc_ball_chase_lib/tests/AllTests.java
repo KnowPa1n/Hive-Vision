@@ -119,6 +119,7 @@ public class AllTests {
         testControllerPickupConfirmation();
         testFollowerSearchExhausts();
         testFollowerChaseAndPickup();
+        testFollowerPickupConfirmation();
         testFollowerTravelTimeout();
         testFollowerAbortAndBudget();
         testFinalBallHunt();
@@ -499,6 +500,48 @@ public class AllTests {
             BallChaseFollower.SCAN_MS = oC;
             BallChaseFollower.TURN_TIMEOUT_MS = oT;
             BallChaseFollower.PICKUP_DWELL_MS = oD;
+        }
+    }
+
+    private static void testFollowerPickupConfirmation() {
+        System.out.println("follower: pickup-confirmation hook");
+        long oS = BallChaseFollower.SETTLE_MS, oC = BallChaseFollower.SCAN_MS, oT = BallChaseFollower.TURN_TIMEOUT_MS;
+        long oD = BallChaseFollower.PICKUP_DWELL_MS, oV = BallChaseFollower.PICKUP_CONFIRM_MS;
+        BallChaseFollower.SETTLE_MS = 5;
+        BallChaseFollower.SCAN_MS = 5;
+        BallChaseFollower.TURN_TIMEOUT_MS = 20;
+        BallChaseFollower.PICKUP_DWELL_MS = 20;
+        BallChaseFollower.PICKUP_CONFIRM_MS = 250;
+        try {
+            // 1) confirmer says NO -> never credited, counted as missed grabs, keeps hunting
+            RobotHarness rig = new RobotHarness();
+            BallChaseFollower h = new BallChaseFollower(rig.follower, rig.newTracker(), null);
+            h.setAllowedClasses(BallTracker.CLASS_RED);
+            h.setMaxPickups(1);
+            h.setPickupConfirmer(() -> false);
+            rig.source.dets = dets(red(0, -15, 0.9));
+            h.start();
+            pumpFollower(rig, h, 1500);
+            check(h.getPickups() == 0 && h.getFailedPickups() >= 1,
+                    "unconfirmed dwell -> 0 pickups credited, >= 1 failed");
+
+            // 2) confirmer says YES -> pickup credited exactly as before
+            RobotHarness rig2 = new RobotHarness();
+            BallChaseFollower h2 = new BallChaseFollower(rig2.follower, rig2.newTracker(), null);
+            h2.setAllowedClasses(BallTracker.CLASS_RED);
+            h2.setMaxPickups(1);
+            h2.setPickupConfirmer(() -> true);
+            rig2.source.dets = dets(red(0, -15, 0.9));
+            h2.start();
+            pumpFollower(rig2, h2, 3000);
+            check(h2.isDone() && h2.getPickups() == 1 && h2.getFailedPickups() == 0,
+                    "confirmed dwell -> 1 pickup -> DONE");
+        } finally {
+            BallChaseFollower.SETTLE_MS = oS;
+            BallChaseFollower.SCAN_MS = oC;
+            BallChaseFollower.TURN_TIMEOUT_MS = oT;
+            BallChaseFollower.PICKUP_DWELL_MS = oD;
+            BallChaseFollower.PICKUP_CONFIRM_MS = oV;
         }
     }
 

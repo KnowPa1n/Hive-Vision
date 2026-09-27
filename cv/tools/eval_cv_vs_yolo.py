@@ -26,7 +26,7 @@ import numpy as np
 from ultralytics import YOLO
 
 BASE = Path(__file__).resolve().parent
-DEFAULT_W = str(BASE.parent.parent / "yolo" / "weights" / "best.pt")
+DEFAULT_W = str(BASE.parent.parent / "neural-net" / "weights" / "best.pt")
 DEFAULT_TRUTH = str(BASE.parent / "docs" / "yolo_truth.json")
 COLORS = ("yellow", "red", "blue")
 MIN_CONF = 0.35

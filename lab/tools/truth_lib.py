@@ -13,7 +13,7 @@ from ultralytics import YOLO
 MIN_CONF = 0.35
 DEFAULT_IMGSZ = 960
 
-WEIGHTS = str(Path(__file__).resolve().parent.parent.parent / "yolo" / "weights" / "best.pt")
+WEIGHTS = str(Path(__file__).resolve().parent.parent.parent / "neural-net" / "weights" / "best.pt")
 
 
 def ball_like(x1, y1, x2, y2, W, H):

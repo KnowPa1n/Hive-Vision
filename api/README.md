@@ -68,7 +68,7 @@ The `BallTracker` class reference — lock, confirmation, `Sighting`,
 | [`BallChaseController`](chasers.md) | `final/` | no-odometry chase | pure camera chase — teleop assist or a short pickup phase; no localizer needed |
 | [`BallChaseFollower`](chasers.md) | `final/` | Pedro auto hybrid | a Pedro auto that plans paths — you own `follower.update()`; camera finishes |
 | [`BallHunt`](chasers.md) | `final/` | one-liner | collect balls in one line — `.go(this)` |
-| [`BallWrangler`](wrapper.md) | `wrapper/` | fluent verb API | prose-like chains — `grab(RED).within(6)`; `withPickupSensor(...)` for sensor-verified pickups |
+| [`BallWrangler`](wrapper.md) | `wrapper/` | fluent verb API | prose-like chains — `grab(RED).within(6)`; `withPickupConfirmer(...)` for sensor-verified pickups |
 | [`PedroWrangler` / `MecanumWrangler`](wrapper.md) | `wrapper/` | motion providers | only the physical motion, under the wrapper |
 
 ## Blocking vs loop-driven & lifecycle

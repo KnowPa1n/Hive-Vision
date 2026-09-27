@@ -27,7 +27,7 @@ from ultralytics import YOLO
 
 BASE = Path(__file__).resolve().parent
 NAMES = {0: "yellow", 1: "red", 2: "blue"}
-DEFAULT_W = str(BASE.parent.parent / "yolo" / "weights" / "best.pt")
+DEFAULT_W = str(BASE.parent.parent / "neural-net" / "weights" / "best.pt")
 SPLIT_H = 8
 SV_MIN = (25, 35)          # drop shadows / desaturated edges during sampling
 DEBUG = False

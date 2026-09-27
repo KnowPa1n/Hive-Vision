@@ -69,6 +69,14 @@ public class BallHunt {
         return this;
     }
 
+    /** Require a physical confirmation (beam break, intake current spike)
+     *  before counting each pickup. Without one, pickups count after every
+     *  dwell (legacy behavior). */
+    public BallHunt confirmWhen(BallChaseFollower.PickupConfirmer c) {
+        hunt.setPickupConfirmer(c);
+        return this;
+    }
+
     /* ---------------- run it ---------------- */
 
     /** Blocking: run the whole hunt, own follower.update(), stream telemetry,
@@ -107,6 +115,11 @@ public class BallHunt {
 
     public int got() {
         return hunt.getPickups();
+    }
+
+    /** How many picks were attempted but never confirmed (missed grabs). */
+    public int gotFailed() {
+        return hunt.getFailedPickups();
     }
 
     public String state() {

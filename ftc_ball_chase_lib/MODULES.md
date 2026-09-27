@@ -144,7 +144,7 @@ two drivers is consistent.
 | `TRAVEL` | Pedro drives to `APPROACH_DIST` short of the nearest remembered ball, facing it. A drive that times out counts as one failed approach and re-plans, giving up after `SEARCH_MAX_STEPS` failed approaches. |
 | `TURN` | in-place turn to face a close ball, or sweep when nothing is known. |
 | `CHASE` | camera-only final approach (aim on `tx`, range from `ty`) — no field position needed, so localization error stops mattering. Coasts straight if the ball disappears right at the intake. |
-| `PICKUP` | stop, run the intake, clear that ball from memory, back to `SCAN`. |
+| `PICKUP` | stop, run the intake, clear that ball from memory, back to `SCAN` — or, if a `PickupConfirmer` is set and never reports a ball in the intake within `PICKUP_CONFIRM_MS`, count a failed pickup instead (no credit, drop the lock, re-plan). |
 | `DONE` | when pickups reach `maxPickups` or the time budget runs out. |
 
 **Usage**
@@ -160,6 +160,17 @@ while (opModeIsActive() && !hunt.isDone()) {
     hunt.addTelemetry(telemetry);
 }
 hunt.abort();
+```
+
+**Pickup confirmation (optional)** — same hook as the controller: wire in a
+beam break, intake color/infrared sensor, or current spike so a pickup only
+counts when a ball actually arrived. A dwell that panics out unconfirmed
+increments `getFailedPickups()` (no credit), drops the lock, and re-plans.
+Without a confirmer, every dwell is credited (legacy behavior); timeout is
+`PICKUP_CONFIRM_MS` (`0` = wait forever).
+
+```java
+hunt.setPickupConfirmer(() -> intakeCurrentSensor.getCurrent() > 2.0);
 ```
 
 **Conventions** — Pedro field inches, heading radians CCW+, robot frame
@@ -189,6 +200,8 @@ int picked = hunt.go(this);          // blocking: drives, picks 2 alliance balls
 | `.everything()` | red + blue + neutral yellow |
 | `.collect(n)` | `n` balls per hunt (default 1); `n <= 0` = unlimited |
 | `.within(sec)` | hard time budget before it hands back control (default 15 s) |
+| `.confirmWhen(PickupConfirmer)` | require a physical confirmation (beam break / current spike) before crediting a pickup |
+| `.gotFailed()` | how many picks were attempted but never confirmed (missed grabs) |
 | `.go(opMode)` | BLOCKING convenience: runs the hunt (owns `follower.update()`), streams telemetry, aborts cleanly, returns balls picked. |
 
 Loop-driven alternative (advanced / when you must keep your own loop):
@@ -252,7 +265,7 @@ hunt.grabTwo(RED, BLUE).thenReturnTo(scorePose).go(this);
   chain; those steps stay bound to `other`, so their pickups are counted on
   `other`. Keep `orElse`/fallbacks on the **receiving** wrangler in
   cross-chain builds.
-- `withPickupSensor(...)` installs an optional hardware confirmation
+- `withPickupConfirmer(...)` installs an optional hardware confirmation
   (beam break / intake current spike): a chase only counts a pickup — and
-  reports success — when the sensor confirms it. Without a sensor, behavior is
-  unchanged (optimistic count).
+  reports success — when it confirms a ball in the intake. Without a
+  confirmer, behavior is unchanged (optimistic count).

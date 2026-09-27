@@ -298,22 +298,20 @@ public class RobotTestBench extends LinearOpMode {
             }
         }
 
-        if (chase != null) {
-            telemetry.addData("chase", "%s pickups=%d/%s", chase.getState(), chase.getPickups(),
-                    chase.isDone() ? "done" : "run");
+        if (selected == Test.CHASE && chase != null) {
+            telemetry.addData("chase", "%s pickups=%d/%s failed=%d", chase.getState(), chase.getPickups(),
+                    chase.isDone() ? "done" : "run", chase.getFailedPickups());
         }
-        if (mec != null) {
+        if (selected == Test.MECANUM && mec != null) {
             telemetry.addData("mec", "done=%s pickups=%d err=%s",
                     mec.isDone(), mec.getPickups(), mec.lastError() == null ? "-" : mec.lastError());
         }
         if (followerErr != null) {
             telemetry.addLine("follower build failed: " + followerErr);
         }
-        if (selected == Test.HUNT && follower == null) {
-            telemetry.addLine("NO follower: override buildFollower() with your Pedro follower");
-        }
-        if (hunt != null) {
-            telemetry.addData("hunt", "%s pickups=%d", hunt.getState(), hunt.getPickups());
+        if (selected == Test.HUNT && hunt != null) {
+            telemetry.addData("hunt", "%s pickups=%d failed=%d", hunt.getState(), hunt.getPickups(),
+                    hunt.getFailedPickups());
         }
     }
 

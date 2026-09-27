@@ -82,13 +82,13 @@ public abstract class BallWrangler {
 
     /** Optional hardware confirmation that a ball actually entered the intake
      *  (beam break, intake current spike). When set, a chase only counts the
-     *  pickup - and reports won() - if confirmed() is true the moment the
+     *  pickup - and reports won() - if isBallInIntake() is true the moment the
      *  pickup dwell ends; otherwise the step fails cleanly (won = false, no
      *  pickup counted) so an orElse() fallback or a gather's failure cap can
-     *  react instead of trusting a phantom. With no sensor, behavior is
+     *  react instead of trusting a phantom. With no confirmer, behavior is
      *  unchanged (optimistic count). */
-    public interface PickupSensor {
-        boolean confirmed();
+    public interface PickupConfirmer {
+        boolean isBallInIntake();
     }
 
     /* ---------------- perception ---------------- */
@@ -112,7 +112,7 @@ public abstract class BallWrangler {
     protected final FullSensor full;        // may be null
 
     private Set<Integer> huntAllowed = new HashSet<>(BallTracker.CLASSES_RED_BLUE);
-    private PickupSensor pickupSensor = null;
+    private PickupConfirmer pickupConfirmer = null;
 
     /* ---------------- chain state ---------------- */
 
@@ -295,7 +295,7 @@ public abstract class BallWrangler {
         private void succeed() {
             drive(0, 0, 0);
             have = false;
-            boolean confirmed = !accountPickup || pickupSensor == null || pickupSensor.confirmed();
+            boolean confirmed = !accountPickup || pickupConfirmer == null || pickupConfirmer.isBallInIntake();
             won = confirmed;
             if (accountPickup && confirmed) pickups++;
         }
@@ -785,8 +785,8 @@ public abstract class BallWrangler {
     public boolean isFull() { return full != null && full.isFull(); }
 
     /** Optional hardware confirmation for pickups (beam break, current spike).
-     *  See PickupSensor. Fluent. */
-    public BallWrangler withPickupSensor(PickupSensor s) { pickupSensor = s; return this; }
+     *  See PickupConfirmer. Fluent. */
+    public BallWrangler withPickupConfirmer(PickupConfirmer c) { pickupConfirmer = c; return this; }
 
     /* ---------------- chaining / conditions ---------------- */
 

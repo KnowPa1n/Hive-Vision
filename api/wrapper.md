@@ -21,7 +21,7 @@ hunt.grabTwo(RED, BLUE).thenReturnTo(scorePose).go(this);
 | `BallWrangler(BallTracker, DcMotor, FullSensor)` | bring your own tracker |
 
 `FullSensor.isFull()` short-circuits `grabAll()`/`grabUpTo()`.
-`PickupSensor` (set via `withPickupSensor`) confirms a pickup physically.
+`PickupConfirmer` (set via `withPickupConfirmer`) confirms a pickup physically.
 
 ## Colors (alliance filter)
 
@@ -104,7 +104,7 @@ ball is lost for `CHASE_LOST_MS` (`giveUp`), or the per-chase budget elapses.
 | `intakeOff()` | stop it |
 | `reverse(double sec)` | run it backwards for `sec` (un-jam) |
 | `isFull()` | true when the `FullSensor` reports full |
-| `withPickupSensor(PickupSensor s)` | require physical confirmation before counting a pickup / reporting success (beam break or current spike); absent = optimistic count |
+| `withPickupConfirmer(PickupConfirmer c)` | require physical confirmation before counting a pickup / reporting success (beam break or current spike); absent = optimistic count |
 
 ## Chaining & conditions
 

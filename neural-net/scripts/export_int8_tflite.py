@@ -31,8 +31,8 @@ import numpy as np
 import tensorflow as tf
 
 BASE = pathlib.Path(__file__).resolve().parents[3]          # .../ftc-yolo-synth/ftc-yolo-synth
-WEIGHTS = BASE / "hive-vision" / "yolo" / "weights"
-DEFAULT_SM = BASE / "hive-vision" / "yolo" / "_litert_int8" / "sm"
+WEIGHTS = BASE / "hive-vision" / "neural-net" / "weights"
+DEFAULT_SM = BASE / "hive-vision" / "neural-net" / "_litert_int8" / "sm"
 DEFAULT_CALIB = BASE / "V7f" / "dataset" / "concat" / "images" / "train"
 DEFAULT_OUT = WEIGHTS / "best_limelight3a_int8.tflite"
 SIZE = 960
