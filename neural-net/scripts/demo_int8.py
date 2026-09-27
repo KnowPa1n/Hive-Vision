@@ -108,6 +108,11 @@ def main():
                         help="keep oversized or non-ball-shaped model boxes")
     args = parser.parse_args()
 
+    if not Path(args.weights).exists():
+        sys.exit(f"weights not found: {args.weights}\n"
+                 "The int8 artifact is generated, not committed -- run "
+                 "neural-net/scripts/export_int8_tflite.py first, or pass "
+                 "--weights for another model.")
     interpreter = tf.lite.Interpreter(model_path=args.weights)
     interpreter.allocate_tensors()
     input_detail = interpreter.get_input_details()[0]

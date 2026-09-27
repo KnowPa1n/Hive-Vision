@@ -37,6 +37,8 @@ def combos_for(c):
 
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument('--source', default=str(SRC),
+                    help='video to score (default: author-saved shot set path)')
     ap.add_argument('--stride', type=int, default=1)
     ap.add_argument('--fill', type=float, default=None)
     args = ap.parse_args()
@@ -53,7 +55,9 @@ def main():
     order = {c: {tuple(map(float, b)) + (fl,): i for i, (b, fl) in enumerate(variants[c])}
              for c in COLORS}
 
-    cap = cv2.VideoCapture(SRC)
+    cap = cv2.VideoCapture(args.source)
+    if not cap.isOpened():
+        raise SystemExit(f"cannot open video: {args.source}")
     box_means = {}
     n = 0
     while True:

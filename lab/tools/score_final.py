@@ -1,3 +1,4 @@
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -27,6 +28,10 @@ def overlap(b, box):
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--source', default=str(SRC),
+                    help='video to score (default: author-saved shot set path)')
+    args = ap.parse_args()
     cfg = lab_lib.load_config(str(BASE / 'lab_tuned.json'))
     truth = {int(k): v for k, v in json.load(open(TRUTH)).items()}
     combos = [(slo, fill) for slo in [0.25, 0.35, 0.45] for fill in [0.5, 0.55, 0.62]]
@@ -39,7 +44,9 @@ def main():
                    hue_band=WIN[c][0])
            for c in COLORS}
     el = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-    cap = cv2.VideoCapture(SRC)
+    cap = cv2.VideoCapture(args.source)
+    if not cap.isOpened():
+        raise SystemExit(f"cannot open video: {args.source}")
     n = 0
     while True:
         ok, frame = cap.read()

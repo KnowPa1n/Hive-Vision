@@ -60,6 +60,7 @@ def main():
     paused = False
     t0 = time.perf_counter()
     n = 0
+    fps = 0.0
     name = Path(a.weights).name
     window = f"fused v7f [{name}]  q=quit p=pause f=sphere s=save"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)

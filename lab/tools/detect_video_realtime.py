@@ -160,6 +160,7 @@ def main():
     paused = False
     t0 = time.perf_counter()
     n = 0
+    fps = 0.0
     window = "lab realtime  q=quit p=pause c=view f=gate b=best a=adaptive s=save"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
 

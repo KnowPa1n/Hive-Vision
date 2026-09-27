@@ -73,6 +73,7 @@ def main():
     paused = False
     t0 = time.perf_counter()
     n = 0
+    fps = 0.0
     window = "realtime_lab  q=quit p=pause f=gate b=best a=adaptive s=save"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
 
@@ -94,8 +95,8 @@ def main():
         if not ok:
             break
         n += 1
-        found = lab_lib.detect(frame, cfg, gate=gate, adaptive=adaptive)
-        feat = lab_lib.features(frame)
+        feat = lab_lib.features(frame)      # computed ONCE, reused for everything
+        found = lab_lib.detect(frame, cfg, gate=gate, adaptive=adaptive, feat=feat)
         am = cfg["ambient"]
         scl = lab_lib.adapt_scale(feat["amb"], am["ref_l"], am["scl_lo"], am["scl_hi"]) \
             if adaptive else 1.0

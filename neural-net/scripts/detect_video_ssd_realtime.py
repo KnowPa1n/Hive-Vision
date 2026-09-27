@@ -176,6 +176,7 @@ def main():
     paused = False
     t0 = time.perf_counter()
     n = 0
+    fps = 0.0
     name = Path(a.weights).name
     window = f"SSD-MobileNetV2 3A [{name}]  q=quit p=pause f=sphere +/-=conf s=save"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)

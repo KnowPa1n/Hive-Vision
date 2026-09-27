@@ -29,7 +29,7 @@ try:
 except ImportError:
     from tflite_runtime.interpreter import Interpreter
 
-DEFAULT_W = r"neural-net/weights/best_limelight3a_float32.tflite"
+DEFAULT_W = r"neural-net/weights/best_limelight3a_int8.tflite"
 
 LABELS = ("yellow_pollen", "red_nectar", "blue_nectar")
 COLORS = ((0, 255, 255), (0, 0, 255), (255, 0, 0))
@@ -92,7 +92,12 @@ def main():
     a = ap.parse_args()
 
     if not Path(a.weights).exists():
-        raise SystemExit(f"weights not found: {a.weights}")
+        raise SystemExit(
+            f"weights not found: {a.weights}\n"
+            "This tool previews the int8 artifact (Limelight 3A rejects "
+            "float32 models). Generate it with "
+            "neural-net/scripts/export_int8_tflite.py, or pass --weights for "
+            "another model.")
 
     interpreter = Interpreter(model_path=str(a.weights))
     interpreter.allocate_tensors()
@@ -110,6 +115,7 @@ def main():
     paused = False
     t0 = time.perf_counter()
     n = 0
+    fps = 0.0
     name = Path(a.weights).name
     window = f"TFLite limelight [{name}]  q=quit p=pause f=sphere s=save"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
