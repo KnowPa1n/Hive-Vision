@@ -14,6 +14,7 @@ import com.qualcomm.robotcore.util.Range;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.BallChaseController;
 import org.firstinspires.ftc.teamcode.BallTracker;
+import org.firstinspires.ftc.teamcode.HiveConfig;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,30 +50,30 @@ public abstract class BallWrangler {
     public static long   CHASE_PICKUP_MS       = BallChaseController.PICKUP_DWELL_MS;
     public static double CHASE_INTAKE_POWER    = BallChaseController.INTAKE_POWER;
     public static double SEARCH_TURN           = BallChaseController.SEARCH_TURN;
-    public static long   CHASE_LOST_MS         = 500;   // wrapper-only: how long a lost ball is chaseable
-    public static double GRAB_TIMEOUT_SEC      = 6.0;   // wrapper-only
-    public static int    GRAB_FAIL_LIMIT       = 2;     // consecutive failed chases before a gather gives up
+    public static long   CHASE_LOST_MS         = HiveConfig.CHASE_LOST_MS;   // wrapper-only: how long a lost ball is chaseable
+    public static double GRAB_TIMEOUT_SEC      = HiveConfig.GRAB_TIMEOUT_SEC;   // wrapper-only
+    public static int    GRAB_FAIL_LIMIT       = HiveConfig.GRAB_FAIL_LIMIT;     // consecutive failed chases before a gather gives up
 
-    public static double APPROACH_DIST         = 28.0;
-    public static double NUDGE_DIST            = 12.0;
+    public static double APPROACH_DIST         = HiveConfig.WRAPPER_APPROACH_DIST;
+    public static double NUDGE_DIST            = HiveConfig.NUDGE_DIST;
 
-    public static double ALIGN_TOL_DEG         = 4.0;
-    public static double ALIGN_TIMEOUT_SEC     = 2.5;
-    public static double ALIGN_TURN_KP         = 0.05;
+    public static double ALIGN_TOL_DEG         = HiveConfig.ALIGN_TOL_DEG;
+    public static double ALIGN_TIMEOUT_SEC     = HiveConfig.ALIGN_TIMEOUT_SEC;
+    public static double ALIGN_TURN_KP         = HiveConfig.ALIGN_TURN_KP;
 
-    public static double SCAN_SWEEP_DEG        = 120.0;
-    public static double SCAN_TIMEOUT_SEC      = 3.0;
+    public static double SCAN_SWEEP_DEG        = HiveConfig.SCAN_SWEEP_DEG;
+    public static double SCAN_TIMEOUT_SEC      = HiveConfig.SCAN_TIMEOUT_SEC;
 
-    public static double BACK_POWER            = 0.35;
-    public static double MAX_FWD_IN_PER_SEC    = 18.0;
+    public static double BACK_POWER            = HiveConfig.BACK_POWER;
+    public static double MAX_FWD_IN_PER_SEC    = HiveConfig.MAX_FWD_IN_PER_SEC;
 
-    public static double SCORE_OFF_AXIS_PENALTY = 0.25;  // per OFF_AXIS_SCALE_DEG of |tx|
-    public static double SCORE_CONF_BONUS       = 0.20;  // up to -20% range for max confidence
-    public static double OFF_AXIS_SCALE_DEG     = 45.0;
+    public static double SCORE_OFF_AXIS_PENALTY = HiveConfig.SCORE_OFF_AXIS_PENALTY;  // per OFF_AXIS_SCALE_DEG of |tx|
+    public static double SCORE_CONF_BONUS       = HiveConfig.SCORE_CONF_BONUS;  // up to -20% range for max confidence
+    public static double OFF_AXIS_SCALE_DEG     = HiveConfig.OFF_AXIS_SCALE_DEG;
 
-    public static double GO_TO_TIMEOUT_SEC      = 8.0;   // pose verbs (searchAt / then / thenReturnTo)
+    public static double GO_TO_TIMEOUT_SEC      = HiveConfig.GO_TO_TIMEOUT_SEC;   // pose verbs (searchAt / then / thenReturnTo)
 
-    public static long LOOP_MS = 10;   // go() loop period
+    public static long LOOP_MS = HiveConfig.LOOP_MS;   // go() loop period
 
     /** Pluggable full-intake detector; grabAll()/grabUpTo() stop when this says full. */
     public interface FullSensor {

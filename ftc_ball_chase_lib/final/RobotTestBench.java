@@ -35,7 +35,6 @@ import java.util.List;
 @TeleOp(name = "All-Code Test Bench", group = "Hive Vision")
 public class RobotTestBench extends LinearOpMode {
 
-    private static final int PIPELINE_INDEX = 0;
     private static final double WHEEL_TEST_POWER = 0.4;
 
     private enum Test { WHEELS, SPIN, DETECT, CHASE, INTAKE, MECANUM, HUNT }
@@ -58,11 +57,11 @@ public class RobotTestBench extends LinearOpMode {
 
     @Override
     public void runOpMode() {
-        lf = hardwareMap.get(DcMotor.class, "leftFront");
-        rf = hardwareMap.get(DcMotor.class, "rightFront");
-        lb = hardwareMap.get(DcMotor.class, "leftBack");
-        rb = hardwareMap.get(DcMotor.class, "rightBack");
-        intake = hardwareMap.tryGet(DcMotor.class, "intake");
+        lf = hardwareMap.get(DcMotor.class, HiveConfig.MOTOR_LEFT_FRONT);
+        rf = hardwareMap.get(DcMotor.class, HiveConfig.MOTOR_RIGHT_FRONT);
+        lb = hardwareMap.get(DcMotor.class, HiveConfig.MOTOR_LEFT_BACK);
+        rb = hardwareMap.get(DcMotor.class, HiveConfig.MOTOR_RIGHT_BACK);
+        intake = hardwareMap.tryGet(DcMotor.class, HiveConfig.MOTOR_INTAKE);
 
         BallChaseController.configureMecanumDirections(lf, rf, lb, rb);
         for (DcMotor m : new DcMotor[]{lf, rf, lb, rb}) {
@@ -70,9 +69,9 @@ public class RobotTestBench extends LinearOpMode {
             m.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         }
 
-        limelight = hardwareMap.get(Limelight3A.class, "limelight");
-        limelight.pipelineSwitch(PIPELINE_INDEX);
-        limelight.setPollRateHz(100);
+        limelight = hardwareMap.get(Limelight3A.class, HiveConfig.LIMELIGHT_NAME);
+        limelight.pipelineSwitch(HiveConfig.LIMELIGHT_PIPELINE);
+        limelight.setPollRateHz(HiveConfig.LIMELIGHT_POLL_RATE_HZ);
         limelight.start();
         tracker = new BallTracker(limelight);
 

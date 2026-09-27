@@ -23,51 +23,51 @@ public class BallChaseFollower {
 
     public enum State { IDLE, SCAN, TRAVEL, TURN, CHASE, PICKUP, DONE }
 
-    /* ---- camera geometry (from BallTracker) ---- */
-    private static final double CAM_FWD_OFFSET  = 0.0;  // camera position vs robot center
-    private static final double CAM_LEFT_OFFSET = 0.0;
-    private static final double HFOV_DEG        = 54.5; // verify for your unit
-    private static final double VFOV_DEG        = 42.0;
-    private static final double FOV_MARGIN_DEG  = 4.0;  // ignore the frame edges
+    /* ---- camera geometry (from HiveConfig) ---- */
+    private static final double CAM_FWD_OFFSET  = HiveConfig.CAM_X_OFFSET;   // camera position vs robot center
+    private static final double CAM_LEFT_OFFSET = HiveConfig.CAM_Y_OFFSET;
+    private static final double HFOV_DEG        = HiveConfig.HFOV_DEG;       // verify for your unit
+    private static final double VFOV_DEG        = HiveConfig.VFOV_DEG;
+    private static final double FOV_MARGIN_DEG  = HiveConfig.FOV_MARGIN_DEG;  // ignore the frame edges
 
     /* ---- planning ---- */
-    public static double MAX_PLAN_RANGE    = 40.0;
-    public static double MERGE_RADIUS      = 4.0;   // samples this close are the same ball
-    public static double APPROACH_DIST     = 24.0;  // Pedro stops this far short of the ball
-    public static double CLEAR_RADIUS      = 12.0;  // balls this close to a pickup are cleared
-    public static double FIELD_MIN         = 6.0;
-    public static double FIELD_MAX         = 138.0;
-    public static long   TRAVEL_TIMEOUT_MS = 4000;
+    public static double MAX_PLAN_RANGE    = HiveConfig.MAX_PLAN_RANGE;
+    public static double MERGE_RADIUS      = HiveConfig.MERGE_RADIUS;   // samples this close are the same ball
+    public static double APPROACH_DIST     = HiveConfig.FOLLOWER_APPROACH_DIST;  // Pedro stops this far short of the ball
+    public static double CLEAR_RADIUS      = HiveConfig.CLEAR_RADIUS;   // balls this close to a pickup are cleared
+    public static double FIELD_MIN         = HiveConfig.FIELD_MIN;
+    public static double FIELD_MAX         = HiveConfig.FIELD_MAX;
+    public static long   TRAVEL_TIMEOUT_MS = HiveConfig.TRAVEL_TIMEOUT_MS;
 
     /* ---- scan / search ---- */
-    public static long   SETTLE_MS        = 250;
-    public static long   SCAN_MS          = 250;
-    public static double SEARCH_STEP_DEG  = 45.0;
-    public static int    SEARCH_MAX_STEPS = 8;
+    public static long   SETTLE_MS        = HiveConfig.SETTLE_MS;
+    public static long   SCAN_MS          = HiveConfig.SCAN_MS;
+    public static double SEARCH_STEP_DEG  = HiveConfig.SEARCH_STEP_DEG;
+    public static int    SEARCH_MAX_STEPS = HiveConfig.SEARCH_MAX_STEPS;
 
     /* ---- in-place turn ---- */
-    public static double TURN_TO_KP      = 0.8;   // power per radian of error
-    public static double TURN_TO_MIN     = 0.12;
-    public static double TURN_TO_MAX     = 0.5;
-    public static double TURN_TO_TOL_DEG = 4.0;
-    public static long   TURN_TIMEOUT_MS = 2500;
+    public static double TURN_TO_KP      = HiveConfig.TURN_TO_KP;   // power per radian of error
+    public static double TURN_TO_MIN     = HiveConfig.TURN_TO_MIN;
+    public static double TURN_TO_MAX     = HiveConfig.TURN_TO_MAX;
+    public static double TURN_TO_TOL_DEG = HiveConfig.TURN_TO_TOL_DEG;
+    public static long   TURN_TIMEOUT_MS = HiveConfig.TURN_TIMEOUT_MS;
 
     /* ---- camera-only chase ---- */
-    public static double STOP_DIST      = 16.0;   // camera->ball floor distance at pickup
-    public static double AIM_TOL_DEG    = 5.0;
-    public static double DRIVE_MIN_TX   = 15.0;   // beyond this, turn in place only
-    public static double DRIVE_KP       = 0.03;   // forward power per inch of distance error
-    public static double MIN_FWD        = 0.15;
-    public static double MAX_FWD        = 0.7;
-    public static double TURN_KP        = 0.025;  // power per degree of tx
-    public static double MIN_TURN       = 0.08;
-    public static double MAX_TURN       = 0.6;
-    public static double COAST_MAX_DIST = 26.0;
-    public static double COAST_POWER    = 0.25;
-    public static long   COAST_MS       = 450;
-    public static long   LOST_MS        = 500;    // no ball this long in chase -> forget it
-    public static long   PICKUP_DWELL_MS = 600;
-    public static double INTAKE_POWER    = 1.0;
+    public static double STOP_DIST      = HiveConfig.STOP_DIST;      // camera->ball floor distance at pickup
+    public static double AIM_TOL_DEG    = HiveConfig.AIM_TOL_DEG;
+    public static double DRIVE_MIN_TX   = HiveConfig.DRIVE_MIN_TX;   // beyond this, turn in place only
+    public static double DRIVE_KP       = HiveConfig.DRIVE_KP;       // forward power per inch of distance error
+    public static double MIN_FWD        = HiveConfig.MIN_FWD;
+    public static double MAX_FWD        = HiveConfig.MAX_FWD;
+    public static double TURN_KP        = HiveConfig.TURN_KP;        // power per degree of tx
+    public static double MIN_TURN       = HiveConfig.MIN_TURN;
+    public static double MAX_TURN       = HiveConfig.MAX_TURN;
+    public static double COAST_MAX_DIST = HiveConfig.COAST_MAX_DIST;
+    public static double COAST_POWER    = HiveConfig.COAST_POWER;
+    public static long   COAST_MS       = HiveConfig.COAST_MS;
+    public static long   LOST_MS        = HiveConfig.CHASE_LOST_MS;  // no ball this long in chase -> forget it
+    public static long   PICKUP_DWELL_MS = HiveConfig.PICKUP_DWELL_MS;
+    public static double INTAKE_POWER    = HiveConfig.INTAKE_POWER;
 
     private static class Ball {
         double x, y;

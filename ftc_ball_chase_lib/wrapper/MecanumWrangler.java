@@ -20,6 +20,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.BallTracker;
+import org.firstinspires.ftc.teamcode.HiveConfig;
 
 public class MecanumWrangler extends BallWrangler {
 
@@ -42,8 +43,8 @@ public class MecanumWrangler extends BallWrangler {
         double headingRad();
     }
 
-    public static double TURN_RATE_RAD_PER_POWER_SEC = 3.5;  // dead-reckon scan estimate
-    public static double GO_TO_POWER = 0.7;
+    public static double TURN_RATE_RAD_PER_POWER_SEC = HiveConfig.TURN_RATE_RAD_PER_POWER_SEC;  // dead-reckon scan estimate
+    public static double GO_TO_POWER = HiveConfig.GO_TO_POWER;
 
     private final DcMotor lf, rf, lb, rb;
     private final PoseRouter router;

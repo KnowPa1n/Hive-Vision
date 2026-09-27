@@ -17,27 +17,27 @@ import java.util.Set;
 
 public class BallTracker {
 
-    /* ---- Limelight / geometry (MEASURE THESE) ---- */
-    public static double CAM_PITCH_DEG = 25.0;   // camera tilt BELOW horizontal
-    public static double CAM_H         = 9.2;    // camera lens height above floor, in
-    public static double BALL_H        = 3.0;    // ball center height above floor, in
-    public static double CAM_X_OFFSET  = 0.0;    // camera FORWARD of robot center, in (mount offset)
-    public static double CAM_Y_OFFSET  = 0.0;    // camera LEFT of robot center, in; negative = right
+    /* ---- Limelight / geometry (MEASURE THESE; defaults live in HiveConfig) ---- */
+    public static double CAM_PITCH_DEG = HiveConfig.CAM_PITCH_DEG;   // camera tilt BELOW horizontal
+    public static double CAM_H         = HiveConfig.CAM_H;           // camera lens height above floor, in
+    public static double BALL_H        = HiveConfig.BALL_H;          // ball center height above floor, in
+    public static double CAM_X_OFFSET  = HiveConfig.CAM_X_OFFSET;    // camera FORWARD of robot center, in (mount offset)
+    public static double CAM_Y_OFFSET  = HiveConfig.CAM_Y_OFFSET;    // camera LEFT of robot center, in; negative = right
 
     /* ---- class ids - CONFIRM against the pipeline label list, not this comment ---- */
-    public static final int CLASS_YELLOW_NEUTRAL = 0;
-    public static final int CLASS_RED            = 1;
-    public static final int CLASS_BLUE           = 2;
+    public static final int CLASS_YELLOW_NEUTRAL = HiveConfig.CLASS_YELLOW_NEUTRAL;
+    public static final int CLASS_RED            = HiveConfig.CLASS_RED;
+    public static final int CLASS_BLUE           = HiveConfig.CLASS_BLUE;
     public static final Set<Integer> CLASSES_RED_BLUE = setOf(CLASS_RED, CLASS_BLUE);
     public static final Set<Integer> CLASSES_ALL      = setOf(CLASS_RED, CLASS_BLUE, CLASS_YELLOW_NEUTRAL);
 
     /* ---- detection gating ---- */
-    public static double MIN_CONF   = 0.44; // CHECK telemetry: is confidence 0-1 or 0-100 on your firmware?
-    public static long   MAX_STALENESS_MS = 120; // Limelight SDK reports staleness in MILLISECONDS (docs "Is The Data Fresh?")
+    public static double MIN_CONF   = HiveConfig.MIN_CONF; // CHECK telemetry: is confidence 0-1 or 0-100 on your firmware?
+    public static long   MAX_STALENESS_MS = HiveConfig.MAX_STALENESS_MS; // Limelight SDK reports staleness in MILLISECONDS (docs "Is The Data Fresh?")
 
     /* ---- target lock (stops flip-flopping when 2+ balls are visible) ---- */
-    public static double LOCK_GATE_DEG = 12.0; // max frame-to-frame angular jump to count as "same ball"
-    public static long   LOCK_LOST_MS  = 300;  // drop the lock if it isn't matched for this long
+    public static double LOCK_GATE_DEG = HiveConfig.LOCK_GATE_DEG; // max frame-to-frame angular jump to count as "same ball"
+    public static long   LOCK_LOST_MS  = HiveConfig.LOCK_LOST_MS;  // drop the lock if it isn't matched for this long
 
     /** One chosen ball this frame. `predicted` sightings carry last-known angles
      *  while the locked ball is momentarily missing (fresh lock only). */

@@ -15,28 +15,28 @@ public class BallChaseController {
 
     public enum State { IDLE, SEARCHING, CHASING, COASTING, PICKUP, DONE }
 
-    /* ---- approach ---- */
-    public static double STOP_DIST    = 16.0;  // camera-to-ball floor distance at pickup, in
-    public static double AIM_TOL_DEG  = 5.0;   // "aimed enough" to pick up
-    public static double DRIVE_MIN_TX = 15.0;  // beyond this many degrees off, turn in place only
-    public static double DRIVE_KP     = 0.03;  // forward power per inch of distance error
-    public static double MIN_FWD      = 0.15;  // overcome static friction
-    public static double MAX_FWD      = 0.7;
+    /* ---- approach (defaults live in HiveConfig) ---- */
+    public static double STOP_DIST    = HiveConfig.STOP_DIST;     // camera-to-ball floor distance at pickup, in
+    public static double AIM_TOL_DEG  = HiveConfig.AIM_TOL_DEG;   // "aimed enough" to pick up
+    public static double DRIVE_MIN_TX = HiveConfig.DRIVE_MIN_TX;  // beyond this many degrees off, turn in place only
+    public static double DRIVE_KP     = HiveConfig.DRIVE_KP;      // forward power per inch of distance error
+    public static double MIN_FWD      = HiveConfig.MIN_FWD;       // overcome static friction
+    public static double MAX_FWD      = HiveConfig.MAX_FWD;
 
     /* ---- turning ---- */
-    public static double TURN_KP      = 0.025; // power per degree of tx
-    public static double MIN_TURN     = 0.08;  // friction floor when outside the tolerance
-    public static double MAX_TURN     = 0.6;
-    public static double SEARCH_TURN  = 0.30;  // clockwise scan when nothing is visible
-    public static double SEARCH_SWEEP_DEG = 360.0;  // give up (DONE) if we dead-reckon this far with nothing in view
-    public static double TURN_RATE_RAD_PER_POWER_SEC = 3.5; // heading estimate for the sweep cap
+    public static double TURN_KP      = HiveConfig.TURN_KP;       // power per degree of tx
+    public static double MIN_TURN     = HiveConfig.MIN_TURN;      // friction floor when outside the tolerance
+    public static double MAX_TURN     = HiveConfig.MAX_TURN;
+    public static double SEARCH_TURN  = HiveConfig.SEARCH_TURN;   // clockwise scan when nothing is visible
+    public static double SEARCH_SWEEP_DEG = HiveConfig.SEARCH_SWEEP_DEG;  // give up (DONE) if we dead-reckon this far with nothing in view
+    public static double TURN_RATE_RAD_PER_POWER_SEC = HiveConfig.TURN_RATE_RAD_PER_POWER_SEC; // heading estimate for the sweep cap
 
     /* ---- close-range coast + pickup ---- */
-    public static double COAST_MAX_DIST = 26.0;   // only coast if last seen within this, in
-    public static double COAST_POWER    = 0.25;
-    public static long   COAST_MS       = 450;
-    public static long   PICKUP_DWELL_MS = 600;
-    public static double INTAKE_POWER   = 1.0;
+    public static double COAST_MAX_DIST = HiveConfig.COAST_MAX_DIST;   // only coast if last seen within this, in
+    public static double COAST_POWER    = HiveConfig.COAST_POWER;
+    public static long   COAST_MS       = HiveConfig.COAST_MS;
+    public static long   PICKUP_DWELL_MS = HiveConfig.PICKUP_DWELL_MS;
+    public static double INTAKE_POWER   = HiveConfig.INTAKE_POWER;
 
     private final BallTracker tracker;
     private final DcMotor lf, rf, lb, rb;
