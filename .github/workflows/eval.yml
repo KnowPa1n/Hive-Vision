@@ -1,0 +1,33 @@
+name: detector eval smoke
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Eval Control Hub OpenCV track
+        run: python cv/tools/eval_cv_vs_yolo.py \
+          --config cv/tools/hsv_tuned.json \
+          --source demo/control_hub_cv_example_1.mp4 \
+          --weights neural-net/weights/best.pt \
+          --truth-json /tmp/ci_truth_cv.json
+
+      - name: Eval Control Hub Lab track
+        run: python lab/tools/eval_lab_vs_yolo.py \
+          --source demo/cielab_demo.mp4 \
+          --config lab/tools/lab_tuned.json \
+          --compare-hsv \
+          --weights neural-net/weights/best.pt \
+          --truth-json /tmp/ci_truth_lab.json

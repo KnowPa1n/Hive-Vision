@@ -4,6 +4,13 @@
 
 Full docs: <https://sidhuharjas.gitbook.io/hive-vision>
 
+<details>
+<summary><strong>Contents</strong></summary>
+
+[Deployment tradeoffs](#deployment-tradeoffs) · [Features](#features) · [Model details](#model-details) · [PC tools](#pc-tools) · [Quick start](#quick-start) · [Publishing the model for Limelight](#publishing-the-model-for-limelight) · [Performance](#performance) · [Repo layout](#repo-layout) · [Shipping](#shipping) · [Demo clips](#demo-clips) · [Community](#community) · [Updates and training data](#updates-and-training-data) · [Training-data workflow](#training-data-workflow) · [License](#license)
+
+</details>
+
 Hive Vision is a real-time ball-detection suite for FTC, ready to drop into
 your robot stack. Every game object — the team's balls in their lane colors —
 is found and tracked with three deployment options:
@@ -220,7 +227,7 @@ Limelight API used by your FTC integration (see
 |-------|--------|-----------|------|
 | Limelight (YOLOv8n, 960) | reference | reference | source of reference detections; also the "other YOLO" the Lab track was tuned with |
 | Control Hub (OpenCV) | yellow 68.7% / red 80.1% / blue 82.3% | 40 / 26 / 66% | treat as a candidate signal |
-| Control Hub (Lab) | yellow 45.5% / red 46.0% / blue 54.5% | 8 / 9 / 8% | measured on *newer* dev footage; dark-frame red recall 95.5% vs 40% for HSV (see [lab report](lab/docs/lab_detector_report.md)) |
+| Control Hub (Lab) | yellow 45.5% / red 46.0% / blue 54.5% | 8 / 9 / 8% | raw per-frame **candidate** precision — Control Hub detections must be confirmed across several frames before the robot acts, so confirmed-target precision is far higher; measured on *newer* dev footage; dark-frame red recall 95.5% vs 40% for HSV (see [lab report](lab/docs/lab_detector_report.md)) |
 
 ### What these numbers mean
 
@@ -330,7 +337,7 @@ candidates.
 
 Join the [Hive Vision Discord server](https://discord.gg/m2yPTprccv) to share
 robot tests, training data, detector results, and setup questions. You can also
-[open an issue on GitHub](https://github.com/sidhuharjas/Hive-Vison/issues)
+[open an issue on GitHub](https://github.com/sidhuharjas/Hive-Vision/issues)
 for bugs, suggestions, or dataset contributions.
 
 ## Updates and training data
