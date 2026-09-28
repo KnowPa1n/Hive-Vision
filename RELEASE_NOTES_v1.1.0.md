@@ -28,8 +28,11 @@ and harder dataset, fixing two classes of false positives found in the field.
 ## Credit
 
 The shadow and outside-object false positives addressed in this release were
-reported by **Team 16765 ProBotiX** (probotixbladel@gmail.com) from their
-arena and robot testing — thank you for the field reports.
+field-reported by **Team 16765 ProBotiX** (probotixbladel@gmail.com),
+**Sid — FTC 13100 47 Beavers (Index 47.org)**, and **Javi Nashat**
+(Lazer Robotics 23286) from their arena and robot testing of the v1.1 model —
+thank you for the field reports. Demo footage of the API robot drives was
+recorded by ProBotiX and Sid, and the on-robot SSD clip by Javi Nashat.
 
 ## Fix in action
 

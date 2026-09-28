@@ -347,29 +347,29 @@ Confirm that you have permission to redistribute any source footage before
 publishing these demo files outside this repository. Replace them with your
 own footage if permission is unclear.
 
-`demo/ssd_in_action.mp4` was filmed by **Javi Nashat** (Lazer Robotics 23286)
-and shows the Limelight 3A SSD detector tested in the real world. Contact/handles:
-Discord `@Destroyer` (handle `destroyer5782`).
+| Clip | Shows | Footage |
+|------|-------|---------|
+| [`demo/yolo_example_1.mp4`](demo/yolo_example_1.mp4) | YOLO example | kickoff video |
+| [`demo/yolo_example_2.mp4`](demo/yolo_example_2.mp4) | YOLO example | kickoff video |
+| [`demo/ssd_mobilenetv2.mp4`](demo/ssd_mobilenetv2.mp4) | Limelight 3A SSD-MobileNetV2 example | kickoff video |
+| [`demo/control_hub_cv_example_1.mp4`](demo/control_hub_cv_example_1.mp4) | Control Hub/OpenCV example | kickoff video |
+| [`demo/control_hub_cv_example_2.mp4`](demo/control_hub_cv_example_2.mp4) | Control Hub/OpenCV example | kickoff video |
+| [`demo/cielab_demo.mp4`](demo/cielab_demo.mp4) | CIELAB (Lab track) example | own match capture |
+| [`demo/ssd_in_action.mp4`](demo/ssd_in_action.mp4) | Limelight 3A SSD tested in the real world | recorded by Javi Nashat (Lazer Robotics 23286) |
+| [`demo/probiotix_api_robot_drive.mp4`](demo/probiotix_api_robot_drive.mp4) | robot drive coded using the [ball-chase API](api/) | provided by Team 16765 ProBotiX |
+| [`demo/sid_47_beavers_robot_drive.mp4`](demo/sid_47_beavers_robot_drive.mp4) | robot drive coded using the [ball-chase API](api/) | provided by Sid — FTC 13100 47 Beavers (Index 47.org) |
 
-`demo/probiotix_api_robot_drive.mp4` shows a robot drive coded using the
-[ball-chase API](api/), and was provided by **Team 16765 ProBotiX**
-(probotixbladel@gmail.com) from their robot testing — thank you for the footage.
+**Footage credits**
 
-`demo/sid_47_beavers_robot_drive.mp4` also shows a robot drive coded using the
-[ball-chase API](api/), provided by **Sid — FTC 13100 47 Beavers
-(Index 47.org)** — thank you for the footage.
-
-| Clip | Track |
-|------|-------|
-| [`demo/yolo_example_1.mp4`](demo/yolo_example_1.mp4) | YOLO example |
-| [`demo/yolo_example_2.mp4`](demo/yolo_example_2.mp4) | YOLO example |
-| [`demo/ssd_mobilenetv2.mp4`](demo/ssd_mobilenetv2.mp4) | Limelight 3A SSD-MobileNetV2 example |
-| [`demo/control_hub_cv_example_1.mp4`](demo/control_hub_cv_example_1.mp4) | Control Hub/OpenCV example |
-| [`demo/control_hub_cv_example_2.mp4`](demo/control_hub_cv_example_2.mp4) | Control Hub/OpenCV example |
-| [`demo/cielab_demo.mp4`](demo/cielab_demo.mp4) | CIELAB (Lab track) example — own match capture |
-| [`demo/ssd_in_action.mp4`](demo/ssd_in_action.mp4) | Limelight 3A SSD-MobileNetV2 tested in the real world — recorded by Javi Nashat, Lazer Robotics 23286 |
-| [`demo/probiotix_api_robot_drive.mp4`](demo/probiotix_api_robot_drive.mp4) | Robot drive coded using the [API](api/) — provided by Team 16765 ProBotiX |
-| [`demo/sid_47_beavers_robot_drive.mp4`](demo/sid_47_beavers_robot_drive.mp4) | Robot drive coded using the [API](api/) — provided by Sid, FTC 13100 47 Beavers (Index 47.org) |
+- `demo/ssd_in_action.mp4` — Limelight 3A SSD-MobileNetV2 tested in the real
+  world, filmed by **Javi Nashat** (Lazer Robotics 23286). Contact/handles:
+  Discord `@Destroyer` (handle `destroyer5782`).
+- `demo/probiotix_api_robot_drive.mp4` — robot drive coded using the
+  [ball-chase API](api/), provided by **Team 16765 ProBotiX**
+  (probotixbladel@gmail.com) from their robot testing — thank you for the footage.
+- `demo/sid_47_beavers_robot_drive.mp4` — robot drive coded using the
+  [ball-chase API](api/), provided by **Sid — FTC 13100 47 Beavers
+  (Index 47.org)** — thank you for the footage.
 
 ### Automatic video previews
 
