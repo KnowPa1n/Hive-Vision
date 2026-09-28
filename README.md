@@ -21,6 +21,7 @@ Full docs: <https://sidhuharjas.gitbook.io/hive-vision>
 - [Performance](#performance)
   - [What these numbers mean](#what-these-numbers-mean)
 - [Repo layout](#repo-layout)
+- [Ball-chase API](#ball-chase-api)
 - [Shipping](#shipping)
 - [Demo clips](#demo-clips)
   - [Automatic video previews](#automatic-video-previews)
@@ -308,6 +309,26 @@ hive-vision/
   logo.png                    project logo
   LICENSE                     MIT (code) — see THIRD_PARTY_NOTICES.md for neural-net/ (AGPL-3.0)
 ```
+
+## Ball-chase API
+
+This repo is a **monorepo**: the FTC ball-chase library ships inside it as
+`ftc_ball_chase_lib/` rather than a separate repo, so it keeps this repo's
+visibility. Copy that folder (or just `final/`) into your `TeamCode` and the
+Limelight sighting turns into a robot action:
+
+- `BallTracker` — perception core (confidence/staleness gating, target lock,
+  multi-frame confirmation)
+- `BallChaseController` — no-odometry chase state machine
+- `BallChaseFollower` + `BallHunt` — Pedro auto hybrid + the one-line collect
+- `wrapper/` — fluent verb API over Pedro/mecanum drivetrains
+
+Full docs live in [api/](api/). The library has its own CI
+(`.github/workflows/libtests.yml` compiles and self-tests it against the FTC
+SDK + Pedro jars) and its own release notes
+([`RELEASE_NOTES_v1.1.0.md`](RELEASE_NOTES_v1.1.0.md)). See it in action in
+the [demo clips](#demo-clips): `demo/probiotix_api_robot_drive.mp4` is a robot
+drive coded using the API, provided by Team 16765 ProBotiX.
 
 ## Shipping
 
