@@ -41,6 +41,10 @@ nothing else flagged:
 
 ![SSD v1.1.0 on the Fixed Up scene](https://github.com/sidhuharjas/Hive-Vision/releases/download/v1.1.0/ssd_sample_fixed_up_c0.25.jpg)
 
+Live from the field: [`demo/javi_v1_1_ssd.mp4`](demo/javi_v1_1_ssd.mp4) — the
+v1.1 detector in the real world, recorded by **Javi Nashat** (Lazer Robotics
+23286).
+
 ## Tooling
 
 - `detect_video_ssd_realtime.py` now runs the SSD alone — the YOLO/CV ground
