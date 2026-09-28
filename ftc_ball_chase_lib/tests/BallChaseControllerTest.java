@@ -18,7 +18,11 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import org.junit.jupiter.api.Disabled;
 
+/** Robot-side harness, not part of the deployed core: lives in tests/ and is
+ *  @Disabled so it never shows up in a match-ready build. */
+@Disabled("robot-only interactive harness")
 @TeleOp(name = "Ball Chase Tool Test", group = "Hive Vision")
 public class BallChaseControllerTest extends LinearOpMode {
 

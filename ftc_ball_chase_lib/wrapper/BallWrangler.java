@@ -12,9 +12,9 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
-import org.firstinspires.ftc.teamcode.BallChaseController;
 import org.firstinspires.ftc.teamcode.BallTracker;
 import org.firstinspires.ftc.teamcode.HiveConfig;
+import org.firstinspires.ftc.teamcode.PickupConfirmer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,66 +29,13 @@ public abstract class BallWrangler {
     public static final BallColor BLUE  = BallColor.BLUE;
     public static final BallColor YELLOW = BallColor.YELLOW;
 
-    /* ---- chase / approach tuning ----
-     * CHASE_* mirrors BallChaseController (the single source of truth for the
-     * no-odometry core), so a gain fixed in one is fixed in both. The wrapper
-     * still re-exposes them as public statics: config systems can drive either
-     * name. Wrapper-only verbs (align / approach / backOff / scan) keep their
-     * own statics below. */
-    public static double CHASE_STOP_DIST       = BallChaseController.STOP_DIST;
-    public static double CHASE_AIM_TOL_DEG     = BallChaseController.AIM_TOL_DEG;
-    public static double CHASE_DRIVE_MIN_TX    = BallChaseController.DRIVE_MIN_TX;
-    public static double CHASE_DRIVE_KP        = BallChaseController.DRIVE_KP;
-    public static double CHASE_MIN_FWD         = BallChaseController.MIN_FWD;
-    public static double CHASE_MAX_FWD         = BallChaseController.MAX_FWD;
-    public static double CHASE_TURN_KP         = BallChaseController.TURN_KP;
-    public static double CHASE_MIN_TURN        = BallChaseController.MIN_TURN;
-    public static double CHASE_MAX_TURN        = BallChaseController.MAX_TURN;
-    public static double CHASE_COAST_MAX_DIST  = BallChaseController.COAST_MAX_DIST;
-    public static double CHASE_COAST_POWER     = BallChaseController.COAST_POWER;
-    public static long   CHASE_COAST_MS        = BallChaseController.COAST_MS;
-    public static long   CHASE_PICKUP_MS       = BallChaseController.PICKUP_DWELL_MS;
-    public static double CHASE_INTAKE_POWER    = BallChaseController.INTAKE_POWER;
-    public static double SEARCH_TURN           = BallChaseController.SEARCH_TURN;
-    public static long   CHASE_LOST_MS         = HiveConfig.CHASE_LOST_MS;   // wrapper-only: how long a lost ball is chaseable
-    public static double GRAB_TIMEOUT_SEC      = HiveConfig.GRAB_TIMEOUT_SEC;   // wrapper-only
-    public static int    GRAB_FAIL_LIMIT       = HiveConfig.GRAB_FAIL_LIMIT;     // consecutive failed chases before a gather gives up
-
-    public static double APPROACH_DIST         = HiveConfig.WRAPPER_APPROACH_DIST;
-    public static double NUDGE_DIST            = HiveConfig.NUDGE_DIST;
-
-    public static double ALIGN_TOL_DEG         = HiveConfig.ALIGN_TOL_DEG;
-    public static double ALIGN_TIMEOUT_SEC     = HiveConfig.ALIGN_TIMEOUT_SEC;
-    public static double ALIGN_TURN_KP         = HiveConfig.ALIGN_TURN_KP;
-
-    public static double SCAN_SWEEP_DEG        = HiveConfig.SCAN_SWEEP_DEG;
-    public static double SCAN_TIMEOUT_SEC      = HiveConfig.SCAN_TIMEOUT_SEC;
-
-    public static double BACK_POWER            = HiveConfig.BACK_POWER;
-    public static double MAX_FWD_IN_PER_SEC    = HiveConfig.MAX_FWD_IN_PER_SEC;
-
-    public static double SCORE_OFF_AXIS_PENALTY = HiveConfig.SCORE_OFF_AXIS_PENALTY;  // per OFF_AXIS_SCALE_DEG of |tx|
-    public static double SCORE_CONF_BONUS       = HiveConfig.SCORE_CONF_BONUS;  // up to -20% range for max confidence
-    public static double OFF_AXIS_SCALE_DEG     = HiveConfig.OFF_AXIS_SCALE_DEG;
-
-    public static double GO_TO_TIMEOUT_SEC      = HiveConfig.GO_TO_TIMEOUT_SEC;   // pose verbs (searchAt / then / thenReturnTo)
-
-    public static long LOOP_MS = HiveConfig.LOOP_MS;   // go() loop period
+    /* All tunables live in ONE file: HiveConfig. Every step reads them at point
+     * of use, so editing HiveConfig (or a config system driving it at runtime)
+     * takes effect immediately - nothing is copied here at class load. */
 
     /** Pluggable full-intake detector; grabAll()/grabUpTo() stop when this says full. */
     public interface FullSensor {
         boolean isFull();
-    }
-
-    /** Optional hardware confirmation that a ball actually entered the intake
-     *  (beam break, intake current spike). When set, a chase only counts the
-     *  pickup - and reports won() - if isBallInIntake() is true the moment the
-     *  pickup dwell ends; otherwise the step fails cleanly (won = false, no
-     *  pickup counted) so an orElse() fallback or a gather's failure cap can
-     *  react instead of trusting a phantom. With no confirmer, behavior is
-     *  unchanged (optimistic count). */
-    public interface PickupConfirmer {
-        boolean isBallInIntake();
     }
 
     /* ---------------- perception ---------------- */
@@ -188,6 +135,7 @@ public abstract class BallWrangler {
         private double lastSeenDist = Double.MAX_VALUE;
         private final ElapsedTime lastSeen = new ElapsedTime();
         private final ElapsedTime dwell = new ElapsedTime();
+        private Set<Integer> prevAllowed;   // tracker's allowed set we must restore on exit
 
         ChaseStep(Supplier<Target> resolve, boolean intakeDuring, double stopDist,
                   boolean dwellPickup, boolean accountPickup) {
@@ -196,7 +144,7 @@ public abstract class BallWrangler {
             this.stopDist = stopDist;
             this.dwellPickup = dwellPickup;
             this.accountPickup = accountPickup;
-            setTimeout(GRAB_TIMEOUT_SEC);
+            setTimeout(HiveConfig.GRAB_TIMEOUT_SEC);
         }
 
         @Override public void onEnter() {
@@ -206,6 +154,7 @@ public abstract class BallWrangler {
             dwellRunning = false;
             lastSeenDist = Double.MAX_VALUE;
             lastSeen.reset();
+            prevAllowed = new HashSet<>(tracker.getAllowedClasses());
             if (target == null) return;
             tracker.reset();
             tracker.addAllowedClass(target.color.classId);
@@ -217,20 +166,28 @@ public abstract class BallWrangler {
             if (target == null || timedOut()) {
                 drive(0, 0, 0);
                 intakePower(0);
+                restoreAllowed();
                 return true;
             }
 
             BallTracker.Sighting s = trackerUpdate();
             if (s == null) {
-                if (have && lastSeenDist <= CHASE_COAST_MAX_DIST) return coastOrArrive();
-                if (lastSeen.milliseconds() > CHASE_LOST_MS) return giveUp();
+                if (have && lastSeenDist <= HiveConfig.COAST_MAX_DIST) return coastOrArrive();
+                if (lastSeen.milliseconds() > HiveConfig.CHASE_LOST_MS) return giveUp();
                 drive(0, 0, 0);
                 return false;
             }
             if (s.predicted) {
-                if (lastSeenDist <= CHASE_COAST_MAX_DIST) return coastOrArrive();
-                double turn = Range.clip(s.txDeg * CHASE_TURN_KP, -CHASE_MAX_TURN, CHASE_MAX_TURN);
-                if (Math.abs(turn) < CHASE_MIN_TURN) turn = Math.copySign(CHASE_MIN_TURN, s.txDeg);
+                if (lastSeenDist <= HiveConfig.COAST_MAX_DIST) return coastOrArrive();
+                // A predicted turn uses the last-known angle, which goes STALE
+                // while the ball is missing - after PREDICT_TURN_MS of no real
+                // sighting, hold position instead of creeping toward an old angle.
+                if (lastSeen.milliseconds() > HiveConfig.PREDICT_TURN_MS) {
+                    drive(0, 0, 0);
+                    return false;
+                }
+                double turn = Range.clip(s.txDeg * HiveConfig.TURN_KP, -HiveConfig.MAX_TURN, HiveConfig.MAX_TURN);
+                if (Math.abs(turn) < HiveConfig.MIN_TURN) turn = Math.copySign(HiveConfig.MIN_TURN, s.txDeg);
                 drive(0, 0, turn);
                 return false;
             }
@@ -239,25 +196,31 @@ public abstract class BallWrangler {
             lastSeenDist = s.distIn;
             have = true;
 
-            boolean aimed = Math.abs(s.txDeg) < CHASE_AIM_TOL_DEG;
+            boolean aimed = Math.abs(s.txDeg) < HiveConfig.AIM_TOL_DEG;
             if (s.distIn <= stopDist && aimed) {
                 drive(0, 0, 0);
                 return arrive();
             }
 
-            double turn = Range.clip(s.txDeg * CHASE_TURN_KP, -CHASE_MAX_TURN, CHASE_MAX_TURN);
-            if (!aimed && Math.abs(turn) < CHASE_MIN_TURN) turn = Math.copySign(CHASE_MIN_TURN, s.txDeg);
+            // !!aimed guarantees |turn| = |tx|*TURN_KP >= AIM_TOL_DEG*TURN_KP way
+            // above the MIN_TURN friction floor, so a MIN_TURN clamp here is dead
+            // code - at these gains the P term already clears the floor.
+            double turn = Range.clip(s.txDeg * HiveConfig.TURN_KP, -HiveConfig.MAX_TURN, HiveConfig.MAX_TURN);
 
             double fwd = 0.0;
-            if (s.distIn > stopDist && Math.abs(s.txDeg) < CHASE_DRIVE_MIN_TX) {
-                fwd = Range.clip((s.distIn - stopDist) * CHASE_DRIVE_KP, CHASE_MIN_FWD, CHASE_MAX_FWD);
+            if (s.distIn > stopDist && Math.abs(s.txDeg) < HiveConfig.DRIVE_MIN_TX) {
+                fwd = Range.clip((s.distIn - stopDist) * HiveConfig.DRIVE_KP,
+                        HiveConfig.MIN_FWD, HiveConfig.MAX_FWD);
             }
-            intakePower(intakeDuring ? CHASE_INTAKE_POWER : 0);
+            intakePower(intakeDuring ? HiveConfig.INTAKE_POWER : 0);
             drive(fwd, 0, turn);
             return false;
         }
 
-        /** Ball is at the intake: dwell the intake if asked, else stop clean. */
+        /** Ball is at the intake: dwell the intake if asked, then confirm the
+         *  ball actually made it in (confirmer). A confirmer's negative answer
+         *  starts the confirm window; a window <= 0 is a ONE-SHOT check right
+         *  at the end of the dwell - the step never waits forever on a miss. */
         private boolean arrive() {
             drive(0, 0, 0);
             if (!dwellPickup) {
@@ -266,10 +229,19 @@ public abstract class BallWrangler {
                 return true;
             }
             if (!dwellRunning) { dwellRunning = true; dwell.reset(); }
-            intakePower(intakeDuring ? CHASE_INTAKE_POWER : 0);
-            if (dwell.milliseconds() >= CHASE_PICKUP_MS) {
+            intakePower(intakeDuring ? HiveConfig.INTAKE_POWER : 0);
+            if (dwell.milliseconds() < HiveConfig.PICKUP_DWELL_MS) return false;
+
+            boolean ok = !accountPickup || pickupConfirmer == null || pickupConfirmer.isBallInIntake();
+            if (ok) {
                 intakePower(0);
                 succeed();
+                return true;
+            }
+            if (HiveConfig.PICKUP_CONFIRM_MS <= 0
+                    || dwell.milliseconds() >= HiveConfig.PICKUP_DWELL_MS + HiveConfig.PICKUP_CONFIRM_MS) {
+                intakePower(0);
+                giveUp();
                 return true;
             }
             return false;
@@ -277,9 +249,9 @@ public abstract class BallWrangler {
 
         /** Ball vanished right at the intake: coast, then treat it as picked. */
         private boolean coastOrArrive() {
-            if (lastSeen.milliseconds() < CHASE_COAST_MS) {
-                intakePower(intakeDuring ? CHASE_INTAKE_POWER : 0);
-                drive(CHASE_COAST_POWER, 0, 0);
+            if (lastSeen.milliseconds() < HiveConfig.COAST_MS) {
+                intakePower(intakeDuring ? HiveConfig.INTAKE_POWER : 0);
+                drive(HiveConfig.COAST_POWER, 0, 0);
                 return false;
             }
             drive(0, 0, 0);
@@ -289,15 +261,22 @@ public abstract class BallWrangler {
         private boolean giveUp() {
             drive(0, 0, 0);
             intakePower(0);
+            restoreAllowed();
             return true;
+        }
+
+        /** Restore the tracker's allowed-class set that was narrowed on entry
+         *  (a chase of one color must not silently exclude the others after). */
+        private void restoreAllowed() {
+            if (prevAllowed != null) tracker.setAllowedClasses(prevAllowed);
         }
 
         private void succeed() {
             drive(0, 0, 0);
             have = false;
-            boolean confirmed = !accountPickup || pickupConfirmer == null || pickupConfirmer.isBallInIntake();
-            won = confirmed;
-            if (accountPickup && confirmed) pickups++;
+            won = true;
+            if (accountPickup) pickups++;
+            restoreAllowed();
         }
 
         @Override public boolean won() { return won; }
@@ -333,7 +312,7 @@ public abstract class BallWrangler {
                 if (inner.won()) {
                     n++;
                     consecutiveFails = 0;
-                } else if (++consecutiveFails >= GRAB_FAIL_LIMIT) {
+                } else if (++consecutiveFails >= HiveConfig.GRAB_FAIL_LIMIT) {
                     return true;
                 }
                 inner = null;
@@ -341,7 +320,7 @@ public abstract class BallWrangler {
             }
             Target t = findNearest();
             if (t == null) return true;
-            inner = new ChaseStep(() -> t, true, CHASE_STOP_DIST, true, true);
+            inner = new ChaseStep(() -> t, true, HiveConfig.STOP_DIST, true, true);
             inner.enterOnce();
             return false;
         }
@@ -349,31 +328,39 @@ public abstract class BallWrangler {
         @Override public boolean won() { return n > 0; }
     }
 
-    /** Rotate in place until a ball shows up, the sweep is covered, or the clock runs out. */
+    /** Rotate in place until a ball shows up, the sweep is covered, or the clock
+     *  runs out. The swept angle ACCUMULATES per-frame heading deltas instead of
+     *  trusting one absolute reading, so a heading wrap/jump mid-scan can't
+     *  reset the budget (or instantly spend it). */
     private class ScanStep extends AStep {
         private final BallColor color;       // null = any allowed color
         private final boolean clockwise;
-        private double startHeading;
+        private double prevHeading;
+        private double swept = 0;
 
         ScanStep(BallColor color, boolean clockwise) {
             this.color = color;
             this.clockwise = clockwise;
-            if (timeoutSec() <= 0) setTimeout(SCAN_TIMEOUT_SEC);
+            if (timeoutSec() <= 0) setTimeout(HiveConfig.SCAN_TIMEOUT_SEC);
         }
 
         @Override public void onEnter() {
-            startHeading = headingRad();
+            prevHeading = headingRad();
+            swept = 0;
         }
 
         @Override public boolean frame() {
             if (timedOut()) { drive(0, 0, 0); return true; }
             if (seen())     { drive(0, 0, 0); return true; }
-            double swept = clockwise ? cwDeltaSince(startHeading) : -cwDeltaSince(startHeading);
-            if (swept >= Math.toRadians(SCAN_SWEEP_DEG)) {
+            double h = headingRad();
+            double delta = clockwise ? cwDeltaSince(prevHeading) : -cwDeltaSince(prevHeading);
+            prevHeading = h;
+            swept += delta;
+            if (swept >= Math.toRadians(HiveConfig.SCAN_SWEEP_DEG)) {
                 drive(0, 0, 0);
                 return true;
             }
-            drive(0, 0, clockwise ? SEARCH_TURN : -SEARCH_TURN);
+            drive(0, 0, clockwise ? HiveConfig.SEARCH_TURN : -HiveConfig.SEARCH_TURN);
             return false;
         }
 
@@ -391,15 +378,17 @@ public abstract class BallWrangler {
         private final Supplier<Target> resolve;
         private Target target;
         private boolean aimed = false;
+        private Set<Integer> prevAllowed;   // tracker's allowed set we must restore on exit
 
         AlignStep(Supplier<Target> resolve) {
             this.resolve = resolve;
-            setTimeout(ALIGN_TIMEOUT_SEC);
+            setTimeout(HiveConfig.ALIGN_TIMEOUT_SEC);
         }
 
         @Override public void onEnter() {
             target = resolve == null ? null : resolve.get();
             aimed = false;
+            prevAllowed = new HashSet<>(tracker.getAllowedClasses());
             if (target == null) return;
             tracker.reset();
             tracker.addAllowedClass(target.color.classId);
@@ -407,18 +396,32 @@ public abstract class BallWrangler {
         }
 
         @Override public boolean frame() {
-            if (target == null || timedOut()) { drive(0, 0, 0); return true; }
-            BallTracker.Sighting s = trackerUpdate();
-            if (s == null) { drive(0, 0, 0); return true; }
-            if (Math.abs(s.txDeg) < ALIGN_TOL_DEG) {
-                aimed = true;
+            if (target == null || timedOut()) {
                 drive(0, 0, 0);
+                restoreAllowed();
                 return true;
             }
-            double turn = Range.clip(s.txDeg * ALIGN_TURN_KP, -CHASE_MAX_TURN, CHASE_MAX_TURN);
-            if (Math.abs(turn) < CHASE_MIN_TURN) turn = Math.copySign(CHASE_MIN_TURN, s.txDeg);
+            BallTracker.Sighting s = trackerUpdate();
+            if (s == null) {
+                drive(0, 0, 0);
+                restoreAllowed();
+                return true;
+            }
+            if (Math.abs(s.txDeg) < HiveConfig.ALIGN_TOL_DEG) {
+                aimed = true;
+                drive(0, 0, 0);
+                restoreAllowed();
+                return true;
+            }
+            double turn = Range.clip(s.txDeg * HiveConfig.ALIGN_TURN_KP, -HiveConfig.MAX_TURN, HiveConfig.MAX_TURN);
+            if (Math.abs(turn) < HiveConfig.MIN_TURN) turn = Math.copySign(HiveConfig.MIN_TURN, s.txDeg);
             drive(0, 0, turn);
             return false;
+        }
+
+        /** Restore the tracker's allowed-class set that was narrowed on entry. */
+        private void restoreAllowed() {
+            if (prevAllowed != null) tracker.setAllowedClasses(prevAllowed);
         }
 
         @Override public boolean won() { return aimed; }
@@ -437,13 +440,13 @@ public abstract class BallWrangler {
 
         @Override public void onEnter() {
             intakePower(0);
-            double rate = Math.max(0.01, BACK_POWER * MAX_FWD_IN_PER_SEC);
+            double rate = Math.max(0.01, HiveConfig.BACK_POWER * HiveConfig.MAX_FWD_IN_PER_SEC);
             deadlineSec = inches / rate;
         }
 
         @Override public boolean frame() {
             if (t0.seconds() >= deadlineSec) { drive(0, 0, 0); return true; }
-            drive(-BACK_POWER, 0, 0);
+            drive(-HiveConfig.BACK_POWER, 0, 0);
             return false;
         }
 
@@ -458,7 +461,7 @@ public abstract class BallWrangler {
 
         GoToStep(RobotPose pose) {
             this.pose = pose;
-            setTimeout(BallWrangler.GO_TO_TIMEOUT_SEC);
+            setTimeout(HiveConfig.GO_TO_TIMEOUT_SEC);
         }
 
         @Override public void onEnter() {
@@ -494,7 +497,7 @@ public abstract class BallWrangler {
         ReverseStep(double sec) { this.sec = sec; }
         @Override public void onEnter() {}
         @Override public boolean frame() {
-            intakePower(-CHASE_INTAKE_POWER);
+            intakePower(-HiveConfig.INTAKE_POWER);
             if (t0.seconds() >= sec) { intakePower(0); return true; }
             return false;
         }
@@ -673,9 +676,9 @@ public abstract class BallWrangler {
     /** Lower is better: base range, nudged up as the ball sits further off the
      *  robot's forward axis and down as confidence rises. */
     public static double scoreOf(double distIn, double bearingDeg, double confidence) {
-        double offAxis = Math.abs(bearingDeg) / OFF_AXIS_SCALE_DEG;
-        double conf = Range.clip((confidence - BallTracker.MIN_CONF) / (1.0 - BallTracker.MIN_CONF), 0, 1);
-        return distIn * (1.0 + SCORE_OFF_AXIS_PENALTY * offAxis) * (1.0 - SCORE_CONF_BONUS * conf);
+        double offAxis = Math.abs(bearingDeg) / HiveConfig.OFF_AXIS_SCALE_DEG;
+        double conf = Range.clip((confidence - HiveConfig.MIN_CONF) / (1.0 - HiveConfig.MIN_CONF), 0, 1);
+        return distIn * (1.0 + HiveConfig.SCORE_OFF_AXIS_PENALTY * offAxis) * (1.0 - HiveConfig.SCORE_CONF_BONUS * conf);
     }
 
     private Target withPose(Target t) {
@@ -688,8 +691,8 @@ public abstract class BallWrangler {
      *  inches) is rotated from the camera frame and added to the robot pose, so
      *  a camera not at robot center still produces field-accurate points. */
     public static double[] projectBall(double txDeg, double tyDeg, RobotPose pose) {
-        final double p = Math.toRadians(BallTracker.CAM_PITCH_DEG);
-        final double h = BallTracker.CAM_H - BallTracker.BALL_H;
+        final double p = Math.toRadians(HiveConfig.CAM_PITCH_DEG);
+        final double h = HiveConfig.CAM_H - HiveConfig.BALL_H;
         double tanTx = Math.tan(Math.toRadians(txDeg));
         double tanTy = Math.tan(Math.toRadians(tyDeg));
         double denom = Math.sin(p) - tanTy * Math.cos(p);
@@ -698,8 +701,8 @@ public abstract class BallWrangler {
         double xr = s * (Math.cos(p) + tanTy * Math.sin(p));
         double yr = -s * tanTx;
         double th = pose.headingRad;
-        double ox = BallTracker.CAM_X_OFFSET * Math.cos(th) - BallTracker.CAM_Y_OFFSET * Math.sin(th);
-        double oy = BallTracker.CAM_X_OFFSET * Math.sin(th) + BallTracker.CAM_Y_OFFSET * Math.cos(th);
+        double ox = HiveConfig.CAM_X_OFFSET * Math.cos(th) - HiveConfig.CAM_Y_OFFSET * Math.sin(th);
+        double oy = HiveConfig.CAM_X_OFFSET * Math.sin(th) + HiveConfig.CAM_Y_OFFSET * Math.cos(th);
         return new double[]{
                 pose.x + ox + xr * Math.cos(th) - yr * Math.sin(th),
                 pose.y + oy + xr * Math.sin(th) + yr * Math.cos(th)};
@@ -725,7 +728,7 @@ public abstract class BallWrangler {
     public BallWrangler and(BallColor color) { return grab(color); }
 
     private void addChase(Supplier<Target> resolve) {
-        add(new ChaseStep(resolve, true, CHASE_STOP_DIST, true, true));
+        add(new ChaseStep(resolve, true, HiveConfig.STOP_DIST, true, true));
     }
 
     private ChaseStep buildChase(Supplier<Target> resolve, boolean intakeDuring,
@@ -750,7 +753,7 @@ public abstract class BallWrangler {
 
     public BallWrangler approach(Target t) {
         final Target tt = t;
-        add(buildChase(() -> tt, false, APPROACH_DIST, false, false));
+        add(buildChase(() -> tt, false, HiveConfig.WRAPPER_APPROACH_DIST, false, false));
         return this;
     }
 
@@ -767,7 +770,7 @@ public abstract class BallWrangler {
 
     public BallWrangler nudge(Target t) {
         final Target tt = t;
-        add(buildChase(() -> tt, false, NUDGE_DIST, false, false));
+        add(buildChase(() -> tt, false, HiveConfig.NUDGE_DIST, false, false));
         return this;
     }
 
@@ -778,7 +781,7 @@ public abstract class BallWrangler {
 
     /* ---------------- intake ---------------- */
 
-    public BallWrangler intakeOn()  { add(new IntakeStep(CHASE_INTAKE_POWER)); return this; }
+    public BallWrangler intakeOn()  { add(new IntakeStep(HiveConfig.INTAKE_POWER)); return this; }
     public BallWrangler intakeOff() { add(new IntakeStep(0.0)); return this; }
     public BallWrangler reverse(double sec) { add(new ReverseStep(sec)); return this; }
 
@@ -805,7 +808,7 @@ public abstract class BallWrangler {
         public When grab(BallColor c) {
             add(new ConditionalStep(() -> canSee(color), () -> {
                 List<Step> l = new ArrayList<>();
-                l.add(buildChase(() -> find(c), true, CHASE_STOP_DIST, true, true));
+                l.add(buildChase(() -> find(c), true, HiveConfig.STOP_DIST, true, true));
                 return l;
             }));
             return this;
@@ -813,7 +816,7 @@ public abstract class BallWrangler {
         public When approach(BallColor c) {
             add(new ConditionalStep(() -> canSee(color), () -> {
                 List<Step> l = new ArrayList<>();
-                l.add(buildChase(() -> find(c), false, APPROACH_DIST, false, false));
+                l.add(buildChase(() -> find(c), false, HiveConfig.WRAPPER_APPROACH_DIST, false, false));
                 return l;
             }));
             return this;
@@ -973,7 +976,7 @@ public abstract class BallWrangler {
             addTelemetry(op.telemetry);
             op.telemetry.update();
             try {
-                Thread.sleep(LOOP_MS);
+                Thread.sleep(HiveConfig.LOOP_MS);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;

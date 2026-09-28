@@ -17,8 +17,12 @@ public final class RobotHarness {
     public static final class ScriptedSource implements BallTracker.DetectionSource {
         public List<BallTracker.RawDet> dets = new ArrayList<>();
         public long staleness = 0;
+        public long frame = 1;   // DetectionSource report id - bump per feed() so the tracker sees distinct frames
         @Override public List<BallTracker.RawDet> latest() { return dets; }
         @Override public long stalenessMs() { return staleness; }
+        @Override public long frame() { return frame; }
+        /** Set the detections and advance the frame counter. */
+        public void feed(List<BallTracker.RawDet> d) { dets = d; frame++; }
     }
 
     public static final class FloatLocalizer implements Localizer {

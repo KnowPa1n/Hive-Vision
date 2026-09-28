@@ -29,9 +29,13 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.teamcode.wrapper.MecanumWrangler;
+import org.junit.jupiter.api.Disabled;
 
 import java.util.List;
 
+/** Robot-side bench, not part of the deployed core: lives in tests/ and is
+ *  @Disabled so it never shows up in a match-ready build. */
+@Disabled("robot-only interactive bench")
 @TeleOp(name = "All-Code Test Bench", group = "Hive Vision")
 public class RobotTestBench extends LinearOpMode {
 
@@ -226,6 +230,7 @@ public class RobotTestBench extends LinearOpMode {
     }
 
     private void detectControls() {
+        tracker.update();    // keep sampling so the DETECT readout stays live
         if (gamepad1.dpad_up)    tracker.setAllowedClasses(BallTracker.CLASS_RED);
         if (gamepad1.dpad_down)  tracker.setAllowedClasses(BallTracker.CLASS_BLUE);
         if (gamepad1.dpad_left)  tracker.setAllowedClasses(BallTracker.CLASSES_RED_BLUE);

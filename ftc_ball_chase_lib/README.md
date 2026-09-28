@@ -74,7 +74,7 @@ streams telemetry, and aborts cleanly:
 @Autonomous
 class MyAuto extends LinearOpMode {
     @Override public void runOpMode() {
-        Follower follower = FtcConfig.buildFollower(this);   // YOUR team's follower
+        Follower follower = BallChaseFollower.buildFollower(this);   // YOUR team's follower
         Limelight3A limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.start();
 
@@ -100,17 +100,18 @@ measurement procedure for each one plus the coordinate sign conventions is in
 
 | Constant | Where | Meaning |
 |----------|-------|---------|
-| `CAM_PITCH_DEG`, `CAM_H`, `BALL_H` | `final/BallTracker.java` | Camera tilt below horizontal, lens height, ball-center height (inches). |
-| `CAM_X_OFFSET`, `CAM_Y_OFFSET` | `final/BallTracker.java` | Camera mount offset from robot center (forward +X, LEFT +Y, inches). Applied when projecting field coords in `wrapper/BallWrangler.projectBall` and `final/BallChaseFollower` field projection. |
-| `MIN_CONF`, `MAX_STALENESS_MS` | `final/BallTracker.java` | Detection gating. `MAX_STALENESS_MS=120`; the SDK reports staleness in MILLISECONDS. Check the 3A firmware: confidence 0-1 or 0-100? |
-| Class ids 0/1/2 | `final/BallTracker.java` | CONFIRM against the Limelight web UI pipeline label list — nothing checks the model at runtime. |
-| Drive/turn/coast gains | `final/BallChaseController.java` / `final/BallChaseFollower.java` | All `public static`, tune in place or via a config system. |
-| `HFOV_DEG`/`VFOV_DEG`, pod/offset geometry | `final/BallChaseFollower.java` | Camera FOV and mount offsets for field projection. |
+| `CAM_PITCH_DEG`, `CAM_H`, `BALL_H` | `final/HiveConfig.java` | Camera tilt below horizontal, lens height, ball-center height (inches). Read at point of use by BallTracker / BallChaseFollower / BallWrangler projection. |
+| `CAM_X_OFFSET`, `CAM_Y_OFFSET` | `final/HiveConfig.java` | Camera mount offset from robot center (forward +X, LEFT +Y, inches). Applied when projecting field coords in `wrapper/BallWrangler.projectBall` and `final/BallChaseFollower` field projection. |
+| `MIN_CONF`, `MAX_STALENESS_MS` | `final/HiveConfig.java` | Detection gating. `MAX_STALENESS_MS=150`; the SDK reports staleness in MILLISECONDS. The 3A firmware reports confidence 0-1 — `MIN_CONF=0.44` is that scale (the score formula normalizes `(conf - MIN_CONF) / (1 - MIN_CONF)`). |
+| Class ids 0/1/2 | `final/HiveConfig.java` | CONFIRM against the Limelight web UI pipeline label list — nothing checks the model at runtime. |
+| Drive/turn/coast gains, search/pickup timing | `final/HiveConfig.java` | Everything the drivers read at point of use — one place to retune. |
+| `HFOV_DEG`/`VFOV_DEG`, pod/offset geometry | `final/HiveConfig.java` | Camera FOV and mount offsets for field projection. |
 
 ## Compile check (structure verification)
 
-The whole tree (`final/` + `wrapper/`) is verified to compile with `javac`
-against the official jars (FTC SDK 11.2.1 + Pedro Pathing 2.1.2). On this
+The whole tree (`final/` + `wrapper/` + `tests/`) is verified to compile with
+`javac` against the official jars (FTC SDK 11.2.1 + Pedro Pathing 2.1.2) plus
+JUnit (`@Disabled` bench classes). On this
 dev box the jars and a JDK are staged under `%LOCALAPPDATA%\ftc_compile`, so
 just run:
 
@@ -126,6 +127,6 @@ For another machine, pull the Maven Central coordinates into a classpath
 - `com.pedropathing:core:2.1.2`, `com.pedropathing:ftc:2.1.2`
 
 ```powershell
-javac -cp "RobotCore.jar;Hardware.jar;core-2.1.2.jar;ftc.jar" -d out `
-  final\*.java wrapper\*.java
+javac -cp "RobotCore.jar;Hardware.jar;core-2.1.2.jar;ftc.jar;junit-jupiter-api.jar" -d out `
+  final\*.java wrapper\*.java tests\*.java
 ```

@@ -55,7 +55,10 @@ public final class HiveConfig {
     /* ---------------- detection gating ---------------- */
 
     public static double MIN_CONF          = 0.44; // detector confidence, 0..1 on Limelight 3A firmware
-    public static long   MAX_STALENESS_MS  = 120;  // Limelight SDK staleness in ms ("Is The Data Fresh?")
+    public static long   MAX_STALENESS_MS  = 150;  // Limelight SDK staleness in ms ("Is The Data Fresh?").
+                                                   // Keep ~3-4x the 3A SSD detector's frame cadence (~15-20 FPS),
+                                                   // so a real frame is never dropped just before pickup;
+                                                   // verify the actual cadence on your bench via staleness telem.
     public static double LOCK_GATE_DEG     = 12.0; // max frame-to-frame angular jump to count as "same ball"
     public static long   LOCK_LOST_MS      = 300;  // drop the lock if it isn't matched for this long
     public static int    CONFIRM_FRAMES    = 0;    // require the same ball N CONSECUTIVE frames before adopting; 0 = off
@@ -80,8 +83,12 @@ public final class HiveConfig {
     public static long   COAST_MS           = 450;
     public static long   CHASE_LOST_MS      = 500;  // no ball this long in chase -> forget it
     public static long   PICKUP_DWELL_MS    = 600;
-    public static long   PICKUP_CONFIRM_MS  = 800;  // extra wait for a pickup confirmer to see the ball; 0 = wait forever
+    public static long   PICKUP_CONFIRM_MS  = 800;  // after the dwell, keep looking for a pickup confirmer
+                                                    // this long; <= 0 = check once at the end of the dwell
     public static double INTAKE_POWER       = 1.0;
+    public static long   PREDICT_TURN_MS    = 150;  // keep turning toward a predicted (briefly missing) ball
+                                                    // this long after its last real sighting, then hold;
+                                                    // must stay under LOCK_LOST_MS
 
     /* ---------------- Pedro planning (follower) ---------------- */
 
@@ -92,6 +99,9 @@ public final class HiveConfig {
     public static double FIELD_MIN           = 6.0;
     public static double FIELD_MAX           = 138.0;
     public static long   TRAVEL_TIMEOUT_MS   = 4000;
+    public static double HUNT_BUDGET_SEC     = 20.0; // whole-hunt default budget: a target that keeps
+                                                     // re-appearing but is never reached can't spin forever;
+                                                     // 0 = unlimited
 
     public static long   SETTLE_MS           = 250;
     public static long   SCAN_MS             = 250;
@@ -99,7 +109,8 @@ public final class HiveConfig {
     public static int    SEARCH_MAX_STEPS    = 8;
 
     public static double TURN_TO_KP          = 0.8;   // power per radian of error
-    public static double TURN_TO_MIN         = 0.12;
+    public static double TURN_TO_MIN         = 0.05;  // friction floor; low so the robot EASES into the
+                                                      // tolerance instead of overshooting the 4 deg stop
     public static double TURN_TO_MAX         = 0.5;
     public static double TURN_TO_TOL_DEG     = 4.0;
     public static long   TURN_TIMEOUT_MS     = 2500;

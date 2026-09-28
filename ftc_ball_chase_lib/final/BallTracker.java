@@ -17,12 +17,9 @@ import java.util.Set;
 
 public class BallTracker {
 
-    /* ---- Limelight / geometry (MEASURE THESE; defaults live in HiveConfig) ---- */
-    public static double CAM_PITCH_DEG = HiveConfig.CAM_PITCH_DEG;   // camera tilt BELOW horizontal
-    public static double CAM_H         = HiveConfig.CAM_H;           // camera lens height above floor, in
-    public static double BALL_H        = HiveConfig.BALL_H;          // ball center height above floor, in
-    public static double CAM_X_OFFSET  = HiveConfig.CAM_X_OFFSET;    // camera FORWARD of robot center, in (mount offset)
-    public static double CAM_Y_OFFSET  = HiveConfig.CAM_Y_OFFSET;    // camera LEFT of robot center, in; negative = right
+    /* All tunables now live in ONE file: HiveConfig. This class reads them at
+     * point of use, so editing HiveConfig (or a config system driving it at
+     * runtime) takes effect immediately - nothing is copied here at load. */
 
     /* ---- class ids - CONFIRM against the pipeline label list, not this comment ---- */
     public static final int CLASS_YELLOW_NEUTRAL = HiveConfig.CLASS_YELLOW_NEUTRAL;
@@ -30,18 +27,6 @@ public class BallTracker {
     public static final int CLASS_BLUE           = HiveConfig.CLASS_BLUE;
     public static final Set<Integer> CLASSES_RED_BLUE = setOf(CLASS_RED, CLASS_BLUE);
     public static final Set<Integer> CLASSES_ALL      = setOf(CLASS_RED, CLASS_BLUE, CLASS_YELLOW_NEUTRAL);
-
-    /* ---- detection gating ---- */
-    public static double MIN_CONF   = HiveConfig.MIN_CONF; // confidence is 0..1 on Limelight 3A firmware (see wrapper/Target.java)
-    public static long   MAX_STALENESS_MS = HiveConfig.MAX_STALENESS_MS; // Limelight SDK reports staleness in MILLISECONDS (docs "Is The Data Fresh?")
-
-    /* ---- target lock (stops flip-flopping when 2+ balls are visible) ---- */
-    public static double LOCK_GATE_DEG = HiveConfig.LOCK_GATE_DEG; // max frame-to-frame angular jump to count as "same ball"
-    public static long   LOCK_LOST_MS  = HiveConfig.LOCK_LOST_MS;  // drop the lock if it isn't matched for this long
-
-    /* ---- multi-frame confirmation (guards the lock vs single-frame false positives) ---- */
-    public static int    CONFIRM_FRAMES   = HiveConfig.CONFIRM_FRAMES;   // same ball N CONSECUTIVE frames before adopt; 0/1 = off
-    public static double CONFIRM_GATE_DEG = HiveConfig.CONFIRM_GATE_DEG; // max angular jump between confirming frames, deg
 
     /** One chosen ball this frame. `predicted` sightings carry last-known angles
      *  while the locked ball is momentarily missing (fresh lock only). */
@@ -85,6 +70,12 @@ public class BallTracker {
     public interface DetectionSource {
         List<RawDet> latest();
         long stalenessMs();
+        /** Monotonic frame identifier from the camera, so consumers can tell a
+         *  RE-used result from a NEW frame (confirmation counts distinct
+         *  frames, not update() calls; the follower's SCAN sampler only takes
+         *  genuinely fresh frames). LimelightSource uses the LL result
+         *  timestamp; a scripted source bumps it per synthetic frame. */
+        long frame();
     }
 
     private static final class LimelightSource implements DetectionSource {
@@ -107,6 +98,11 @@ public class BallTracker {
             LLResult r = limelight == null ? null : limelight.getLatestResult();
             return r == null ? Long.MAX_VALUE : r.getStaleness();
         }
+
+        @Override public long frame() {
+            LLResult r = limelight == null ? null : limelight.getLatestResult();
+            return r == null ? 0L : (long) r.getTimestamp();
+        }
     }
 
     private final DetectionSource source;
@@ -119,9 +115,10 @@ public class BallTracker {
     private Sighting last = null;                   // most recent result of update()
 
     /* ---- multi-frame confirmation state ---- */
-    private int    confirmFrames  = 0;              // per-instance override; 0 = use CONFIRM_FRAMES
-    private double confirmGateDeg = 0;              // per-instance override; 0 = use CONFIRM_GATE_DEG
+    private int    confirmFrames  = 0;              // per-instance override; -1 = explicitly OFF, 0 = use HiveConfig
+    private double confirmGateDeg = 0;              // per-instance override; 0 = use HiveConfig
     private int    confirmStreak  = 0;              // consecutive frames the candidate ball has been seen
+    private long   lastConfirmFrame = -1;           // frame id the current confirm streak was last advanced on
     private Integer confirmClass = null;            // candidate's class (null = no candidate yet)
     private Double  confirmTx = null, confirmTy = null; // candidate's last angular position
 
@@ -168,13 +165,16 @@ public class BallTracker {
     }
 
     /** Arm multi-frame confirmation: a ball must be seen `frames` CONSECUTIVE
-     *  frames (same class, angularly within CONFIRM_GATE_DEG of its last
-     *  position) before `update()` adopts it as the locked target — a deliberate
-     *  guard against single-frame false positives (e.g. red robot panels).
-     *  Callers can hold off acting via hasConfirmedTarget(). Returns this
-     *  tracker for fluency: `tracker.requireConfirmation(4, 12.0);` */
+     *  DISTINCT camera frames (same class, angularly within the gate of its
+     *  last position) before `update()` adopts it as the locked target — a
+     *  deliberate guard against single-frame false positives (e.g. red robot
+     *  panels). The count advances on a new DetectionSource frame() only, so
+     *  re-polling the same camera frame cannot inflate the streak. Callers can
+     *  hold off acting via hasConfirmedTarget(). Pass 0 (or less) to turn it
+     *  OFF even when HiveConfig.CONFIRM_FRAMES is armed. Returns this tracker
+     *  for fluency: `tracker.requireConfirmation(4, 12.0);` */
     public BallTracker requireConfirmation(int frames) {
-        this.confirmFrames = frames;
+        this.confirmFrames = frames <= 0 ? -1 : frames;   // 0 = explicit OFF, not "use HiveConfig"
         return this;
     }
 
@@ -201,7 +201,8 @@ public class BallTracker {
     }
 
     /** Frames this tracker currently requires before adopting a target
-     *  (per-instance override, else the static CONFIRM_FRAMES default). */
+     *  (per-instance override, else the HiveConfig.CONFIRM_FRAMES default;
+     *  0 when confirmation is explicitly disarmed). */
     public int getConfirmationFrames() {
         return effConfirmFrames();
     }
@@ -217,6 +218,12 @@ public class BallTracker {
         return last;
     }
 
+    /** Frame identity of the most recent camera result (0 if none yet). Lets
+     *  callers tell a re-polled/re-used frame from a genuinely new one. */
+    public long getFrame() {
+        return source.frame();
+    }
+
     /** Staleness of the latest Limelight result in milliseconds (for scan-time gating). */
     public long getStalenessMs() {
         return source.stalenessMs();
@@ -225,14 +232,14 @@ public class BallTracker {
     /** Confidence- and class-gated detections for scan-time field projection.
      *  Null if the result is stale or missing. Does NOT touch the target lock. */
     public List<RawDet> getGatedDetections() {
-        if (source.stalenessMs() > MAX_STALENESS_MS) return null;
+        if (source.stalenessMs() > HiveConfig.MAX_STALENESS_MS) return null;
         List<RawDet> dets = source.latest();
         if (dets == null || dets.isEmpty()) return null;
 
         List<RawDet> out = new java.util.ArrayList<>();
         for (RawDet d : dets) {
             if (!allowed.contains(d.classId)) continue;
-            if (d.confidence < MIN_CONF) continue;
+            if (d.confidence < HiveConfig.MIN_CONF) continue;
             out.add(d);
         }
         return out;
@@ -242,13 +249,13 @@ public class BallTracker {
      *  Unlike getGatedDetections() this ignores the allowed-class filter, so an
      *  explicit "find that color" can peek at any class. Null when stale/missing. */
     public List<RawDet> getConfidentResults() {
-        if (source.stalenessMs() > MAX_STALENESS_MS) return null;
+        if (source.stalenessMs() > HiveConfig.MAX_STALENESS_MS) return null;
         List<RawDet> dets = source.latest();
         if (dets == null || dets.isEmpty()) return null;
 
         List<RawDet> out = new java.util.ArrayList<>();
         for (RawDet d : dets) {
-            if (d.confidence < MIN_CONF) continue;
+            if (d.confidence < HiveConfig.MIN_CONF) continue;
             out.add(d);
         }
         return out;
@@ -268,15 +275,15 @@ public class BallTracker {
 
     /** Floor distance camera -> ball from the vertical angle. Big number if at/above the horizon. */
     public double groundRange(double tyDeg) {
-        double depression = CAM_PITCH_DEG - tyDeg;   // angle below horizontal to the ball
+        double depression = HiveConfig.CAM_PITCH_DEG - tyDeg;   // angle below horizontal to the ball
         if (depression < 1.0) return 999.0;
-        return (CAM_H - BALL_H) / Math.tan(Math.toRadians(depression));
+        return (HiveConfig.CAM_H - HiveConfig.BALL_H) / Math.tan(Math.toRadians(depression));
     }
 
     /* ---------------- selection / lock internals ---------------- */
 
     private Sighting compute() {
-        List<RawDet> dets = source.stalenessMs() > MAX_STALENESS_MS ? null : source.latest();
+        List<RawDet> dets = source.stalenessMs() > HiveConfig.MAX_STALENESS_MS ? null : source.latest();
 
         if (dets == null || dets.isEmpty()) {
             return coastOrDrop();
@@ -289,7 +296,7 @@ public class BallTracker {
         for (RawDet d : dets) {
             if (!allowed.contains(d.classId)) continue;
             if (lockClass != null && d.classId != lockClass) continue;   // lock is color-bound
-            if (d.confidence < MIN_CONF) continue;
+            if (d.confidence < HiveConfig.MIN_CONF) continue;
 
             if (nearest == null || d.tyDeg < nearest.tyDeg) {
                 nearest = d;
@@ -305,10 +312,11 @@ public class BallTracker {
 
         if (nearest == null) return coastOrDrop();       // nothing confident this frame
 
-        if (lockTx != null && lockMatch != null && bestJump <= LOCK_GATE_DEG) {
-            return adopt(lockMatch);                     // same ball as last frame: keep it
+        if (lockTx != null && lockMatch != null && bestJump <= HiveConfig.LOCK_GATE_DEG
+                && lockAge.milliseconds() <= HiveConfig.LOCK_LOST_MS) {
+            return adopt(lockMatch);                     // same ball as last frame, still fresh: keep it
         }
-        if (locked != null && lockAge.milliseconds() <= LOCK_LOST_MS) {
+        if (locked != null && lockAge.milliseconds() <= HiveConfig.LOCK_LOST_MS) {
             return lockedPredicted();                    // fresh lock, ball missing: hold, don't flip
         }
         if (effConfirmFrames() > 1) {
@@ -318,20 +326,24 @@ public class BallTracker {
     }
 
     /** Confirmation gate that runs only on a fresh (unlocked) target: adopt a
-     *  ball only once the SAME ball — same class, within CONFIRM_GATE_DEG of
-     *  where it was the frame before — has been seen `effConfirmFrames()`
-     *  consecutive frames. Returns null while counting (callers hold off), and a
-     *  real adopted sighting on the frame the count reaches N, which then flows
-     *  into the normal target lock. Any disappearance, class change, or jump
-     *  beyond the gate restarts the count. */
+     *  ball only once the SAME ball — same class, within the gate of where it
+     *  was the frame before — has been seen `effConfirmFrames()` CONSECUTIVE
+     *  DISTINCT camera frames. Returns null while counting (callers hold off),
+     *  and a real adopted sighting on the frame the count reaches N, which then
+     *  flows into the normal target lock. Only a NEW DetectionSource frame()
+     *  advances the count — re-polling the same frame is not a fresh sample. Any
+     *  disappearance, class change, or jump beyond the gate restarts the count. */
     private Sighting confirmStep(List<RawDet> dets) {
+        long f = source.frame();
+        if (f == lastConfirmFrame) return null;          // same camera frame re-polled: not a new sample
+        lastConfirmFrame = f;
         RawDet match = null;
         if (confirmClass != null) {
             double gate = effConfirmGate();
             double bestJump = Double.MAX_VALUE;
             for (RawDet d : dets) {
                 if (!allowed.contains(d.classId) || d.classId != confirmClass) continue;
-                if (d.confidence < MIN_CONF) continue;
+                if (d.confidence < HiveConfig.MIN_CONF) continue;
                 double jump = Math.hypot(d.txDeg - confirmTx, d.tyDeg - confirmTy);
                 if (jump < bestJump) { bestJump = jump; match = d; }
             }
@@ -352,7 +364,7 @@ public class BallTracker {
         }
         for (RawDet d : dets) {                          // first frame: seed on the nearest confident detection
             if (!allowed.contains(d.classId)) continue;
-            if (d.confidence < MIN_CONF) continue;
+            if (d.confidence < HiveConfig.MIN_CONF) continue;
             if (match == null || d.tyDeg < match.tyDeg) match = d;
         }
         if (match == null) return null;
@@ -363,12 +375,15 @@ public class BallTracker {
         return null;
     }
 
+    /** Frames required before adopting: a per-instance explicit OFF (-1) wins
+     *  over everything; otherwise the per-instance arm, else HiveConfig. */
     private int effConfirmFrames() {
-        return confirmFrames > 0 ? confirmFrames : CONFIRM_FRAMES;
+        if (confirmFrames < 0) return 0;                 // >= 1 always "off" was impossible before: now it is
+        return confirmFrames > 0 ? confirmFrames : HiveConfig.CONFIRM_FRAMES;
     }
 
     private double effConfirmGate() {
-        return confirmGateDeg > 0 ? confirmGateDeg : CONFIRM_GATE_DEG;
+        return confirmGateDeg > 0 ? confirmGateDeg : HiveConfig.CONFIRM_GATE_DEG;
     }
 
     private void resetCandidate() {
@@ -397,7 +412,7 @@ public class BallTracker {
     }
 
     private Sighting coastOrDrop() {
-        if (locked != null && lockAge.milliseconds() <= LOCK_LOST_MS) {
+        if (locked != null && lockAge.milliseconds() <= HiveConfig.LOCK_LOST_MS) {
             return lockedPredicted();
         }
         dropLock();

@@ -15,37 +15,9 @@ public class BallChaseController {
 
     public enum State { IDLE, SEARCHING, CHASING, COASTING, PICKUP, DONE }
 
-    /* ---- approach (defaults live in HiveConfig) ---- */
-    public static double STOP_DIST    = HiveConfig.STOP_DIST;     // camera-to-ball floor distance at pickup, in
-    public static double AIM_TOL_DEG  = HiveConfig.AIM_TOL_DEG;   // "aimed enough" to pick up
-    public static double DRIVE_MIN_TX = HiveConfig.DRIVE_MIN_TX;  // beyond this many degrees off, turn in place only
-    public static double DRIVE_KP     = HiveConfig.DRIVE_KP;      // forward power per inch of distance error
-    public static double MIN_FWD      = HiveConfig.MIN_FWD;       // overcome static friction
-    public static double MAX_FWD      = HiveConfig.MAX_FWD;
-
-    /* ---- turning ---- */
-    public static double TURN_KP      = HiveConfig.TURN_KP;       // power per degree of tx
-    public static double MIN_TURN     = HiveConfig.MIN_TURN;      // friction floor when outside the tolerance
-    public static double MAX_TURN     = HiveConfig.MAX_TURN;
-    public static double SEARCH_TURN  = HiveConfig.SEARCH_TURN;   // clockwise scan when nothing is visible
-    public static double SEARCH_SWEEP_DEG = HiveConfig.SEARCH_SWEEP_DEG;  // give up (DONE) if we dead-reckon this far with nothing in view
-    public static double TURN_RATE_RAD_PER_POWER_SEC = HiveConfig.TURN_RATE_RAD_PER_POWER_SEC; // heading estimate for the sweep cap
-
-    /* ---- close-range coast + pickup ---- */
-    public static double COAST_MAX_DIST = HiveConfig.COAST_MAX_DIST;   // only coast if last seen within this, in
-    public static double COAST_POWER    = HiveConfig.COAST_POWER;
-    public static long   COAST_MS       = HiveConfig.COAST_MS;
-    public static long   PICKUP_DWELL_MS = HiveConfig.PICKUP_DWELL_MS;
-    public static long   PICKUP_CONFIRM_MS = HiveConfig.PICKUP_CONFIRM_MS; // extra wait for a pickup confirmer
-    public static double INTAKE_POWER   = HiveConfig.INTAKE_POWER;
-
-    /** Optional sensor check that a ball actually made it into the intake.
-     *  Return true from a color sensor, beam break, or current spike. If not
-     *  set, every dwell is counted as a successful pick-up (legacy behavior). */
-    @FunctionalInterface
-    public interface PickupConfirmer {
-        boolean isBallInIntake();
-    }
+    /* All tunables live in ONE file: HiveConfig. This class reads them at point
+     * of use, so editing HiveConfig (or a config system driving it at runtime)
+     * takes effect immediately - nothing is copied here at class load. */
 
     private final BallTracker tracker;
     private final DcMotor lf, rf, lb, rb;
@@ -53,7 +25,7 @@ public class BallChaseController {
 
     private State state = State.IDLE;
     private int pickups = 0;
-    private int failedPickups = 0;                        // dwell elapsed but no confirmation within PICKUP_CONFIRM_MS
+    private int failedPickups = 0;                        // dwell elapsed but unconfirmed within the confirm window
     private int maxPickups = 0;                           // 0 = unlimited
     private PickupConfirmer pickConfirm = null;
 
@@ -143,12 +115,12 @@ public class BallChaseController {
             // ball is momentarily missing but the lock is still fresh: mirror the
             // real-loss handling for close balls (coast, else pickup); otherwise keep
             // facing the last-known angle without advancing or resetting lastSeen.
-            boolean wasClose = lastSeenDist <= COAST_MAX_DIST;
+            boolean wasClose = lastSeenDist <= HiveConfig.COAST_MAX_DIST;
             if (wasClose) {
-                if (lastSeen.milliseconds() < COAST_MS) {
+                if (lastSeen.milliseconds() < HiveConfig.COAST_MS) {
                     state = State.COASTING;
-                    setIntake(INTAKE_POWER);
-                    drive(COAST_POWER, 0, 0);
+                    setIntake(HiveConfig.INTAKE_POWER);
+                    drive(HiveConfig.COAST_POWER, 0, 0);
                     return;
                 }
                 state = State.PICKUP;
@@ -156,32 +128,42 @@ public class BallChaseController {
                 drive(0, 0, 0);
                 return;
             }
-            double turn = Range.clip(tx * TURN_KP, -MAX_TURN, MAX_TURN);
-            if (Math.abs(turn) < MIN_TURN) turn = Math.copySign(MIN_TURN, tx);
+            // A predicted turn uses the last-known angle, which goes STALE while
+            // the ball is missing - after PREDICT_TURN_MS of no real sighting,
+            // hold position instead of creeping toward an old angle.
+            if (lastSeen.milliseconds() > HiveConfig.PREDICT_TURN_MS) {
+                drive(0, 0, 0);
+                return;
+            }
+            double turn = Range.clip(tx * HiveConfig.TURN_KP, -HiveConfig.MAX_TURN, HiveConfig.MAX_TURN);
+            if (Math.abs(turn) < HiveConfig.MIN_TURN) turn = Math.copySign(HiveConfig.MIN_TURN, tx);
             drive(0, 0, turn);
             return;
         }
 
         // ---- real target: chase it ----
-        boolean aimed = Math.abs(tx) < AIM_TOL_DEG;
+        boolean aimed = Math.abs(tx) < HiveConfig.AIM_TOL_DEG;
 
-        if (s.distIn <= STOP_DIST && aimed) {
+        if (s.distIn <= HiveConfig.STOP_DIST && aimed) {
             state = State.PICKUP;
             pickupTimer.reset();
             drive(0, 0, 0);
             return;
         }
 
-        double turn = Range.clip(tx * TURN_KP, -MAX_TURN, MAX_TURN);
-        if (!aimed && Math.abs(turn) < MIN_TURN) turn = Math.copySign(MIN_TURN, tx);
+        // !!aimed guarantees |turn| = |tx|*TURN_KP >= AIM_TOL_DEG*TURN_KP way
+        // above the MIN_TURN friction floor, so a MIN_TURN clamp here is dead
+        // code - at these gains the P term already clears the floor.
+        double turn = Range.clip(tx * HiveConfig.TURN_KP, -HiveConfig.MAX_TURN, HiveConfig.MAX_TURN);
 
         double fwd = 0.0;
-        if (s.distIn > STOP_DIST && Math.abs(tx) < DRIVE_MIN_TX) {
-            fwd = Range.clip((s.distIn - STOP_DIST) * DRIVE_KP, MIN_FWD, MAX_FWD);
+        if (s.distIn > HiveConfig.STOP_DIST && Math.abs(tx) < HiveConfig.DRIVE_MIN_TX) {
+            fwd = Range.clip((s.distIn - HiveConfig.STOP_DIST) * HiveConfig.DRIVE_KP,
+                    HiveConfig.MIN_FWD, HiveConfig.MAX_FWD);
         }
 
         state = State.CHASING;
-        setIntake(INTAKE_POWER);
+        setIntake(HiveConfig.INTAKE_POWER);
         drive(fwd, 0, turn);
     }
 
@@ -203,15 +185,17 @@ public class BallChaseController {
 
     private void doPickup() {
         drive(0, 0, 0);
-        setIntake(INTAKE_POWER);
-        if (pickupTimer.milliseconds() < PICKUP_DWELL_MS) return;
+        setIntake(HiveConfig.INTAKE_POWER);
+        if (pickupTimer.milliseconds() < HiveConfig.PICKUP_DWELL_MS) return;
 
         boolean confirmed = pickConfirm == null || pickConfirm.isBallInIntake();
         if (!confirmed) {
             // Missed grab (ball bounced off / rolled away): keep the intake
             // on, but give up waiting past the confirm window instead of
-            // crediting a pickup the robot never made.
-            if (PICKUP_CONFIRM_MS > 0 && pickupTimer.milliseconds() >= PICKUP_DWELL_MS + PICKUP_CONFIRM_MS) {
+            // crediting a pickup the robot never made. A window <= 0 is a
+            // ONE-SHOT check at the end of the dwell - never wait forever.
+            if (HiveConfig.PICKUP_CONFIRM_MS <= 0
+                    || pickupTimer.milliseconds() >= HiveConfig.PICKUP_DWELL_MS + HiveConfig.PICKUP_CONFIRM_MS) {
                 failedPickups++;
                 tracker.reset();
                 state = State.SEARCHING;
@@ -231,13 +215,13 @@ public class BallChaseController {
 
     private void noTarget() {
         boolean wasClose = (state == State.CHASING || state == State.COASTING)
-                && lastSeenDist <= COAST_MAX_DIST;
+                && lastSeenDist <= HiveConfig.COAST_MAX_DIST;
 
         if (wasClose) {
-            if (lastSeen.milliseconds() < COAST_MS) {
+            if (lastSeen.milliseconds() < HiveConfig.COAST_MS) {
                 state = State.COASTING;
-                setIntake(INTAKE_POWER);
-                drive(COAST_POWER, 0, 0);   // ball went under the intake: keep going straight
+                setIntake(HiveConfig.INTAKE_POWER);
+                drive(HiveConfig.COAST_POWER, 0, 0);   // ball went under the intake: keep going straight
             } else {
                 state = State.PICKUP;
                 pickupTimer.reset();
@@ -257,8 +241,8 @@ public class BallChaseController {
     private void searchTurn() {
         if (searchingWas) {
             double dt = Math.min(searchClock.seconds(), 0.1);
-            searchSwept += SEARCH_TURN * TURN_RATE_RAD_PER_POWER_SEC * dt;
-            if (searchSwept >= Math.toRadians(SEARCH_SWEEP_DEG)) {
+            searchSwept += HiveConfig.SEARCH_TURN * HiveConfig.TURN_RATE_RAD_PER_POWER_SEC * dt;
+            if (searchSwept >= Math.toRadians(HiveConfig.SEARCH_SWEEP_DEG)) {
                 setIntake(0);
                 drive(0, 0, 0);
                 state = State.DONE;
@@ -268,7 +252,7 @@ public class BallChaseController {
         searchClock.reset();
         searchingWas = true;
         setIntake(0);
-        drive(0, 0, SEARCH_TURN);
+        drive(0, 0, HiveConfig.SEARCH_TURN);
     }
 
     /* ---------------- helpers ---------------- */

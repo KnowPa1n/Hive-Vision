@@ -23,60 +23,9 @@ public class BallChaseFollower {
 
     public enum State { IDLE, SCAN, TRAVEL, TURN, CHASE, PICKUP, DONE }
 
-    /* ---- camera geometry (from HiveConfig) ---- */
-    private static final double CAM_FWD_OFFSET  = HiveConfig.CAM_X_OFFSET;   // camera position vs robot center
-    private static final double CAM_LEFT_OFFSET = HiveConfig.CAM_Y_OFFSET;
-    private static final double HFOV_DEG        = HiveConfig.HFOV_DEG;       // verify for your unit
-    private static final double VFOV_DEG        = HiveConfig.VFOV_DEG;
-    private static final double FOV_MARGIN_DEG  = HiveConfig.FOV_MARGIN_DEG;  // ignore the frame edges
-
-    /* ---- planning ---- */
-    public static double MAX_PLAN_RANGE    = HiveConfig.MAX_PLAN_RANGE;
-    public static double MERGE_RADIUS      = HiveConfig.MERGE_RADIUS;   // samples this close are the same ball
-    public static double APPROACH_DIST     = HiveConfig.FOLLOWER_APPROACH_DIST;  // Pedro stops this far short of the ball
-    public static double CLEAR_RADIUS      = HiveConfig.CLEAR_RADIUS;   // balls this close to a pickup are cleared
-    public static double FIELD_MIN         = HiveConfig.FIELD_MIN;
-    public static double FIELD_MAX         = HiveConfig.FIELD_MAX;
-    public static long   TRAVEL_TIMEOUT_MS = HiveConfig.TRAVEL_TIMEOUT_MS;
-
-    /* ---- scan / search ---- */
-    public static long   SETTLE_MS        = HiveConfig.SETTLE_MS;
-    public static long   SCAN_MS          = HiveConfig.SCAN_MS;
-    public static double SEARCH_STEP_DEG  = HiveConfig.SEARCH_STEP_DEG;
-    public static int    SEARCH_MAX_STEPS = HiveConfig.SEARCH_MAX_STEPS;
-
-    /* ---- in-place turn ---- */
-    public static double TURN_TO_KP      = HiveConfig.TURN_TO_KP;   // power per radian of error
-    public static double TURN_TO_MIN     = HiveConfig.TURN_TO_MIN;
-    public static double TURN_TO_MAX     = HiveConfig.TURN_TO_MAX;
-    public static double TURN_TO_TOL_DEG = HiveConfig.TURN_TO_TOL_DEG;
-    public static long   TURN_TIMEOUT_MS = HiveConfig.TURN_TIMEOUT_MS;
-
-    /* ---- camera-only chase ---- */
-    public static double STOP_DIST      = HiveConfig.STOP_DIST;      // camera->ball floor distance at pickup
-    public static double AIM_TOL_DEG    = HiveConfig.AIM_TOL_DEG;
-    public static double DRIVE_MIN_TX   = HiveConfig.DRIVE_MIN_TX;   // beyond this, turn in place only
-    public static double DRIVE_KP       = HiveConfig.DRIVE_KP;       // forward power per inch of distance error
-    public static double MIN_FWD        = HiveConfig.MIN_FWD;
-    public static double MAX_FWD        = HiveConfig.MAX_FWD;
-    public static double TURN_KP        = HiveConfig.TURN_KP;        // power per degree of tx
-    public static double MIN_TURN       = HiveConfig.MIN_TURN;
-    public static double MAX_TURN       = HiveConfig.MAX_TURN;
-    public static double COAST_MAX_DIST = HiveConfig.COAST_MAX_DIST;
-    public static double COAST_POWER    = HiveConfig.COAST_POWER;
-    public static long   COAST_MS       = HiveConfig.COAST_MS;
-    public static long   LOST_MS        = HiveConfig.CHASE_LOST_MS;  // no ball this long in chase -> forget it
-    public static long   PICKUP_DWELL_MS = HiveConfig.PICKUP_DWELL_MS;
-    public static long   PICKUP_CONFIRM_MS = HiveConfig.PICKUP_CONFIRM_MS; // extra wait for a pickup confirmer
-    public static double INTAKE_POWER    = HiveConfig.INTAKE_POWER;
-
-    /** Optional sensor check that a ball actually made it into the intake.
-     *  Return true from a color sensor, beam break, or current spike. If not
-     *  set, every dwell is counted as a successful pick-up (legacy behavior). */
-    @FunctionalInterface
-    public interface PickupConfirmer {
-        boolean isBallInIntake();
-    }
+    /* All tunables live in ONE file: HiveConfig. This class reads them at point
+     * of use, so editing HiveConfig (or a config system driving it at runtime)
+     * takes effect immediately - nothing is copied here at class load. */
 
     private static class Ball {
         double x, y;
@@ -107,10 +56,13 @@ public class BallChaseFollower {
 
     private int pickups = 0;
     private int maxPickups = 0;                           // 0 = unlimited
-    private int failedPickups = 0;                        // dwell elapsed but unconfirmed within PICKUP_CONFIRM_MS
+    private int failedPickups = 0;                        // dwell elapsed but unconfirmed within the confirm window
     private PickupConfirmer pickConfirm = null;
-    private int searchSteps = 0;
+    private int searchSteps = 0;                          // consecutive EMPTY scans without finding a ball
+    private int failedApproaches = 0;                     // consecutive TRAVEL timeouts; NOT reset on re-find
+    private boolean budgetUserSet = false;                // explicit setTimeBudgetSec() beats the HiveConfig default
     private double budgetSec = Double.MAX_VALUE;
+    private long lastSampleFrame = -1;                    // frame id the SCAN sampler last consumed
 
     public BallChaseFollower(Follower follower, BallTracker tracker, DcMotor intakeOrNull) {
         this.follower = follower;
@@ -130,7 +82,7 @@ public class BallChaseFollower {
     public void setAllowedClasses(Integer... classes)     { tracker.setAllowedClasses(classes); }
 
     public void setMaxPickups(int n)       { maxPickups = n; }
-    public void setTimeBudgetSec(double s) { budgetSec = s; }
+    public void setTimeBudgetSec(double s) { budgetSec = s; budgetUserSet = true; }
     public int getPickups()                { return pickups; }
     public int getFailedPickups()          { return failedPickups; }
 
@@ -147,7 +99,12 @@ public class BallChaseFollower {
         pickups = 0;
         failedPickups = 0;
         searchSteps = 0;
+        failedApproaches = 0;
         currentTarget = null;
+        lastSampleFrame = -1;
+        if (!budgetUserSet) {
+            budgetSec = HiveConfig.HUNT_BUDGET_SEC > 0 ? HiveConfig.HUNT_BUDGET_SEC : Double.MAX_VALUE;
+        }
         tracker.reset();
         total.reset();
         enter(State.SCAN);
@@ -198,10 +155,10 @@ t.addData("hunt", "%s  pickups=%d/%s failed=%d  remembered=%d", state, pickups,
         drive(0, 0, 0);
         setIntake(0);
         double t = stateTimer.milliseconds();
-        if (t < SETTLE_MS) return;
+        if (t < HiveConfig.SETTLE_MS) return;
 
         Pose pose = follower.getPose();
-        if (t < SETTLE_MS + SCAN_MS) {
+        if (t < HiveConfig.SETTLE_MS + HiveConfig.SCAN_MS) {
             sampleDetections(pose);
             return;
         }
@@ -209,8 +166,13 @@ t.addData("hunt", "%s  pickups=%d/%s failed=%d  remembered=%d", state, pickups,
     }
 
     private void sampleDetections(Pose pose) {
-        // Only use frames captured after the stop (staleness in ms, both sides).
-        if (tracker.getStalenessMs() > stateTimer.milliseconds() - SETTLE_MS) return;
+        // Only use frames captured after the stop (staleness in ms, both sides),
+        // and only GENUINELY NEW frames - re-polling the same camera frame must
+        // not double-count a ball into the scan.
+        if (tracker.getStalenessMs() > stateTimer.milliseconds() - HiveConfig.SETTLE_MS) return;
+        long f = tracker.getFrame();
+        if (f == lastSampleFrame) return;
+        lastSampleFrame = f;
 
         List<BallTracker.RawDet> dets = tracker.getGatedDetections();
         if (dets == null) return;
@@ -218,14 +180,14 @@ t.addData("hunt", "%s  pickups=%d/%s failed=%d  remembered=%d", state, pickups,
         for (BallTracker.RawDet d : dets) {
             double[] p = project(d.txDeg, d.tyDeg, pose);
             if (p == null) continue;
-            if (Math.hypot(p[0] - pose.getX(), p[1] - pose.getY()) > MAX_PLAN_RANGE) continue;
+            if (Math.hypot(p[0] - pose.getX(), p[1] - pose.getY()) > HiveConfig.MAX_PLAN_RANGE) continue;
             addSample(p[0], p[1]);
         }
     }
 
     private void addSample(double x, double y) {
         for (Ball b : samples) {
-            if (Math.hypot(b.x - x, b.y - y) < MERGE_RADIUS) {
+            if (Math.hypot(b.x - x, b.y - y) < HiveConfig.MERGE_RADIUS) {
                 b.x = (b.x * b.n + x) / (b.n + 1);
                 b.y = (b.y * b.n + y) / (b.n + 1);
                 b.n++;
@@ -248,9 +210,9 @@ t.addData("hunt", "%s  pickups=%d/%s failed=%d  remembered=%d", state, pickups,
 
         Ball target = nearest(memory, pose);
         if (target == null) {
-            if (searchSteps >= SEARCH_MAX_STEPS) { finish(); return; }
+            if (searchSteps >= HiveConfig.SEARCH_MAX_STEPS) { finish(); return; }
             searchSteps++;
-            startTurn(pose.getHeading() + Math.toRadians(SEARCH_STEP_DEG), State.SCAN);
+            startTurn(pose.getHeading() + Math.toRadians(HiveConfig.SEARCH_STEP_DEG), State.SCAN);
             return;
         }
 
@@ -261,7 +223,7 @@ t.addData("hunt", "%s  pickups=%d/%s failed=%d  remembered=%d", state, pickups,
         double dist = Math.hypot(dx, dy);
         double heading = Math.atan2(dy, dx);
 
-        if (dist > APPROACH_DIST + 4.0) {
+        if (dist > HiveConfig.FOLLOWER_APPROACH_DIST + 4.0) {
             startTravel(pose, target, heading);
         } else {
             startTurn(heading, State.CHASE);   // already close: just face it
@@ -269,8 +231,10 @@ t.addData("hunt", "%s  pickups=%d/%s failed=%d  remembered=%d", state, pickups,
     }
 
     private void startTravel(Pose pose, Ball target, double heading) {
-        double ax = Range.clip(target.x - APPROACH_DIST * Math.cos(heading), FIELD_MIN, FIELD_MAX);
-        double ay = Range.clip(target.y - APPROACH_DIST * Math.sin(heading), FIELD_MIN, FIELD_MAX);
+        double ax = Range.clip(target.x - HiveConfig.FOLLOWER_APPROACH_DIST * Math.cos(heading),
+                HiveConfig.FIELD_MIN, HiveConfig.FIELD_MAX);
+        double ay = Range.clip(target.y - HiveConfig.FOLLOWER_APPROACH_DIST * Math.sin(heading),
+                HiveConfig.FIELD_MIN, HiveConfig.FIELD_MAX);
 
         if (Math.hypot(ax - pose.getX(), ay - pose.getY()) < 3.0) {
             startTurn(heading, State.CHASE);   // zero-length path guard
@@ -294,11 +258,13 @@ t.addData("hunt", "%s  pickups=%d/%s failed=%d  remembered=%d", state, pickups,
         setIntake(0);
         if (!follower.isBusy()) {
             enter(State.CHASE);
-        } else if (stateTimer.milliseconds() > TRAVEL_TIMEOUT_MS) {
+        } else if (stateTimer.milliseconds() > HiveConfig.TRAVEL_TIMEOUT_MS) {
             follower.breakFollowing();
             teleop = false;
-            searchSteps++;                 // a timed-out travel = one failed approach
-            if (searchSteps >= SEARCH_MAX_STEPS) { finish(); return; }
+            searchSteps++;                 // a timed-out travel is also not a find
+            failedApproaches++;            // and one more failed approach - this is NOT reset on re-find
+            if (searchSteps >= HiveConfig.SEARCH_MAX_STEPS
+                    || failedApproaches >= HiveConfig.SEARCH_MAX_STEPS) { finish(); return; }
             enter(State.SCAN);             // stuck or blocked: re-plan from wherever we are
         }
     }
@@ -312,14 +278,16 @@ t.addData("hunt", "%s  pickups=%d/%s failed=%d  remembered=%d", state, pickups,
     private void doTurn() {
         setIntake(0);
         double err = wrap(turnTarget - follower.getPose().getHeading());   // + = need CCW
-        if (Math.abs(err) < Math.toRadians(TURN_TO_TOL_DEG)
-                || stateTimer.milliseconds() > TURN_TIMEOUT_MS) {
+        if (Math.abs(err) < Math.toRadians(HiveConfig.TURN_TO_TOL_DEG)
+                || stateTimer.milliseconds() > HiveConfig.TURN_TIMEOUT_MS) {
             drive(0, 0, 0);
             enter(afterTurn);
             return;
         }
-        double cmd = Range.clip(err * TURN_TO_KP, -TURN_TO_MAX, TURN_TO_MAX);
-        if (Math.abs(cmd) < TURN_TO_MIN) cmd = Math.copySign(TURN_TO_MIN, err);
+        double cmd = Range.clip(err * HiveConfig.TURN_TO_KP, -HiveConfig.TURN_TO_MAX, HiveConfig.TURN_TO_MAX);
+        if (Math.abs(cmd) < HiveConfig.TURN_TO_MIN) cmd = Math.copySign(HiveConfig.TURN_TO_MIN, err);
+        double tol = Math.toRadians(HiveConfig.TURN_TO_TOL_DEG);
+        cmd *= Math.min(1.0, Math.abs(err) / (2.0 * tol));   // EASE into the 4 deg stop: no overshoot past it
         drive(0, 0, cmd);
     }
 
@@ -339,21 +307,24 @@ t.addData("hunt", "%s  pickups=%d/%s failed=%d  remembered=%d", state, pickups,
             double[] p = project(tx, ty, pose);
             if (p != null) { lastChaseX = p[0]; lastChaseY = p[1]; haveChaseBall = true; }
 
-            boolean aimed = Math.abs(tx) < AIM_TOL_DEG;
-            if (dist <= STOP_DIST && aimed) {
+            boolean aimed = Math.abs(tx) < HiveConfig.AIM_TOL_DEG;
+            if (dist <= HiveConfig.STOP_DIST && aimed) {
                 drive(0, 0, 0);
                 enter(State.PICKUP);
                 return;
             }
 
-            double turn = Range.clip(-tx * TURN_KP, -MAX_TURN, MAX_TURN);   // Pedro turns CCW+, tx is + right
-            if (!aimed && Math.abs(turn) < MIN_TURN) turn = Math.copySign(MIN_TURN, -tx);
+            // !!aimed guarantees |turn| = |tx|*TURN_KP >= AIM_TOL_DEG*TURN_KP way
+            // above the MIN_TURN friction floor, so a MIN_TURN clamp here is dead
+            // code - at these gains the P term already clears the floor.
+            double turn = Range.clip(-tx * HiveConfig.TURN_KP, -HiveConfig.MAX_TURN, HiveConfig.MAX_TURN);
 
             double fwd = 0.0;
-            if (dist > STOP_DIST && Math.abs(tx) < DRIVE_MIN_TX) {
-                fwd = Range.clip((dist - STOP_DIST) * DRIVE_KP, MIN_FWD, MAX_FWD);
+            if (dist > HiveConfig.STOP_DIST && Math.abs(tx) < HiveConfig.DRIVE_MIN_TX) {
+                fwd = Range.clip((dist - HiveConfig.STOP_DIST) * HiveConfig.DRIVE_KP,
+                        HiveConfig.MIN_FWD, HiveConfig.MAX_FWD);
             }
-            setIntake(INTAKE_POWER);
+            setIntake(HiveConfig.INTAKE_POWER);
             drive(fwd, 0, turn);
             return;
         }
@@ -362,28 +333,35 @@ t.addData("hunt", "%s  pickups=%d/%s failed=%d  remembered=%d", state, pickups,
             // predicted: locked ball briefly missing (fresh lock) - mirror the
             // real-loss handling for close balls (coast, else pickup); otherwise keep
             // facing the last-known angle at reduced power without re-planning.
-            boolean wasClose = lastSeenDist <= COAST_MAX_DIST;
+            boolean wasClose = lastSeenDist <= HiveConfig.COAST_MAX_DIST;
             if (wasClose) {
-                if (lastSeen.milliseconds() < COAST_MS) {
-                    setIntake(INTAKE_POWER);
-                    drive(COAST_POWER, 0, 0);
+                if (lastSeen.milliseconds() < HiveConfig.COAST_MS) {
+                    setIntake(HiveConfig.INTAKE_POWER);
+                    drive(HiveConfig.COAST_POWER, 0, 0);
                     return;
                 }
                 drive(0, 0, 0);
                 enter(State.PICKUP);
                 return;
             }
-            double turn = Range.clip(-s.txDeg * TURN_KP, -MAX_TURN, MAX_TURN);
-            if (Math.abs(turn) < MIN_TURN) turn = Math.copySign(MIN_TURN, -s.txDeg);
+            // A predicted turn uses the last-known angle, which goes STALE while
+            // the ball is missing - after PREDICT_TURN_MS of no real sighting,
+            // hold position instead of creeping toward an old angle.
+            if (lastSeen.milliseconds() > HiveConfig.PREDICT_TURN_MS) {
+                drive(0, 0, 0);
+                return;
+            }
+            double turn = Range.clip(-s.txDeg * HiveConfig.TURN_KP, -HiveConfig.MAX_TURN, HiveConfig.MAX_TURN);
+            if (Math.abs(turn) < HiveConfig.MIN_TURN) turn = Math.copySign(HiveConfig.MIN_TURN, -s.txDeg);
             drive(0, 0, turn);
             return;
         }
 
         // fully lost (lock dropped or never established)
-        if (chaseSawBall && lastSeenDist <= COAST_MAX_DIST) {
-            if (lastSeen.milliseconds() < COAST_MS) {
-                setIntake(INTAKE_POWER);
-                drive(COAST_POWER, 0, 0);   // ball went under the camera: keep going straight
+        if (chaseSawBall && lastSeenDist <= HiveConfig.COAST_MAX_DIST) {
+            if (lastSeen.milliseconds() < HiveConfig.COAST_MS) {
+                setIntake(HiveConfig.INTAKE_POWER);
+                drive(HiveConfig.COAST_POWER, 0, 0);   // ball went under the camera: keep going straight
             } else {
                 drive(0, 0, 0);
                 enter(State.PICKUP);
@@ -392,7 +370,8 @@ t.addData("hunt", "%s  pickups=%d/%s failed=%d  remembered=%d", state, pickups,
         }
 
         drive(0, 0, 0);
-        if (lastSeen.milliseconds() > LOST_MS) {
+        if (lastSeen.milliseconds() > HiveConfig.CHASE_LOST_MS) {
+            tracker.reset();                 // stale lock/candidate must not re-adopt the last ball
             if (currentTarget != null) memory.remove(currentTarget);
             enter(State.SCAN);
         }
@@ -400,15 +379,17 @@ t.addData("hunt", "%s  pickups=%d/%s failed=%d  remembered=%d", state, pickups,
 
     private void doPickup() {
         drive(0, 0, 0);
-        setIntake(INTAKE_POWER);
-        if (stateTimer.milliseconds() < PICKUP_DWELL_MS) return;
+        setIntake(HiveConfig.INTAKE_POWER);
+        if (stateTimer.milliseconds() < HiveConfig.PICKUP_DWELL_MS) return;
 
         boolean confirmed = pickConfirm == null || pickConfirm.isBallInIntake();
         if (!confirmed) {
             // Missed grab (ball bounced off / rolled away): keep the intake
             // on, but give up waiting past the confirm window instead of
-            // crediting a pickup the robot never made.
-            if (PICKUP_CONFIRM_MS > 0 && stateTimer.milliseconds() >= PICKUP_DWELL_MS + PICKUP_CONFIRM_MS) {
+            // crediting a pickup the robot never made. A window <= 0 is a
+            // ONE-SHOT check at the end of the dwell - never wait forever.
+            if (HiveConfig.PICKUP_CONFIRM_MS <= 0
+                    || stateTimer.milliseconds() >= HiveConfig.PICKUP_DWELL_MS + HiveConfig.PICKUP_CONFIRM_MS) {
                 failedPickups++;
                 tracker.reset();
                 enter(State.SCAN);   // drop the lock and re-plan / retry
@@ -417,6 +398,7 @@ t.addData("hunt", "%s  pickups=%d/%s failed=%d  remembered=%d", state, pickups,
         }
 
         pickups++;
+        failedApproaches = 0;        // a real pickup proves the field is reachable again
         double cx, cy;
         boolean haveCoords = true;
         if (haveChaseBall) { cx = lastChaseX; cy = lastChaseY; }
@@ -426,7 +408,7 @@ t.addData("hunt", "%s  pickups=%d/%s failed=%d  remembered=%d", state, pickups,
         if (haveCoords) {
             for (int i = memory.size() - 1; i >= 0; i--) {
                 Ball b = memory.get(i);
-                if (Math.hypot(b.x - cx, b.y - cy) < CLEAR_RADIUS) memory.remove(i);
+                if (Math.hypot(b.x - cx, b.y - cy) < HiveConfig.CLEAR_RADIUS) memory.remove(i);
             }
         }
         if (currentTarget != null) memory.remove(currentTarget);
@@ -451,8 +433,8 @@ t.addData("hunt", "%s  pickups=%d/%s failed=%d  remembered=%d", state, pickups,
 
     /** (tx, ty) in degrees -> field (x, y) of a ball on the floor, or null if above the horizon. */
     private double[] project(double txDeg, double tyDeg, Pose pose) {
-        double p = Math.toRadians(BallTracker.CAM_PITCH_DEG);
-        double h = BallTracker.CAM_H - BallTracker.BALL_H;
+        double p = Math.toRadians(HiveConfig.CAM_PITCH_DEG);
+        double h = HiveConfig.CAM_H - HiveConfig.BALL_H;
         double tanTx = Math.tan(Math.toRadians(txDeg));
         double tanTy = Math.tan(Math.toRadians(tyDeg));
 
@@ -460,8 +442,8 @@ t.addData("hunt", "%s  pickups=%d/%s failed=%d  remembered=%d", state, pickups,
         if (denom <= 0.02) return null;
         double s = h / denom;
 
-        double xr = s * (Math.cos(p) + tanTy * Math.sin(p)) + CAM_FWD_OFFSET;   // robot frame, forward
-        double yr = -s * tanTx + CAM_LEFT_OFFSET;                                // robot frame, left
+        double xr = s * (Math.cos(p) + tanTy * Math.sin(p)) + HiveConfig.CAM_X_OFFSET;   // robot frame, forward
+        double yr = -s * tanTx + HiveConfig.CAM_Y_OFFSET;                                // robot frame, left
 
         double th = pose.getHeading();
         double fx = pose.getX() + xr * Math.cos(th) - yr * Math.sin(th);
@@ -477,12 +459,12 @@ t.addData("hunt", "%s  pickups=%d/%s failed=%d  remembered=%d", state, pickups,
         double xr =  dxw * Math.cos(th) + dyw * Math.sin(th);
         double yr = -dxw * Math.sin(th) + dyw * Math.cos(th);
 
-        double dx = xr - CAM_FWD_OFFSET;
-        double dy = yr - CAM_LEFT_OFFSET;
-        if (Math.hypot(dx, dy) > MAX_PLAN_RANGE) return false;
+        double dx = xr - HiveConfig.CAM_X_OFFSET;
+        double dy = yr - HiveConfig.CAM_Y_OFFSET;
+        if (Math.hypot(dx, dy) > HiveConfig.MAX_PLAN_RANGE) return false;
 
-        double p = Math.toRadians(BallTracker.CAM_PITCH_DEG);
-        double h = BallTracker.CAM_H - BallTracker.BALL_H;
+        double p = Math.toRadians(HiveConfig.CAM_PITCH_DEG);
+        double h = HiveConfig.CAM_H - HiveConfig.BALL_H;
         double zc = dx * Math.cos(p) + h * Math.sin(p);
         if (zc <= 0) return false;
         double xc = -dy;
@@ -490,8 +472,8 @@ t.addData("hunt", "%s  pickups=%d/%s failed=%d  remembered=%d", state, pickups,
 
         double txp = Math.toDegrees(Math.atan2(xc, zc));
         double typ = Math.toDegrees(Math.atan2(yc, zc));
-        return Math.abs(txp) < HFOV_DEG / 2 - FOV_MARGIN_DEG
-                && Math.abs(typ) < VFOV_DEG / 2 - FOV_MARGIN_DEG;
+        return Math.abs(txp) < HiveConfig.HFOV_DEG / 2 - HiveConfig.FOV_MARGIN_DEG
+                && Math.abs(typ) < HiveConfig.VFOV_DEG / 2 - HiveConfig.FOV_MARGIN_DEG;
     }
 
     private Ball nearest(List<Ball> list, Pose pose) {
@@ -511,6 +493,9 @@ t.addData("hunt", "%s  pickups=%d/%s failed=%d  remembered=%d", state, pickups,
         stateTimer.reset();
         if (s == State.SCAN) samples.clear();
         if (s == State.CHASE) {
+            // drop any tracker lock (possibly stale from the travel/settled
+            // frames) so the camera-only final approach starts clean
+            tracker.reset();
             lastSeen.reset();
             lastSeenDist = Double.MAX_VALUE;
             chaseSawBall = false;

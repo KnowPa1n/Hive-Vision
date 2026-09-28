@@ -43,8 +43,9 @@ public class MecanumWrangler extends BallWrangler {
         double headingRad();
     }
 
-    public static double TURN_RATE_RAD_PER_POWER_SEC = HiveConfig.TURN_RATE_RAD_PER_POWER_SEC;  // dead-reckon scan estimate
-    public static double GO_TO_POWER = HiveConfig.GO_TO_POWER;
+    /* Tuning lives in ONE file: HiveConfig (TURN_RATE_RAD_PER_POWER_SEC for
+     * the dead-reckoned scan estimate, GO_TO_POWER for pose verbs), read at
+     * point of use. */
 
     private final DcMotor lf, rf, lb, rb;
     private final PoseRouter router;
@@ -112,7 +113,7 @@ public class MecanumWrangler extends BallWrangler {
 
     @Override protected boolean goToPose(RobotPose p) {
         if (router == null) return false;
-        router.startGoTo(p, GO_TO_POWER);
+        router.startGoTo(p, HiveConfig.GO_TO_POWER);
         return true;
     }
 
@@ -158,7 +159,7 @@ public class MecanumWrangler extends BallWrangler {
         double dt = Math.min(lastDrive.seconds(), 0.1);
         lastDrive.reset();
         if (headingSource == null && router == null) {
-            deadReckonHeading += -lastTurnCw * TURN_RATE_RAD_PER_POWER_SEC * dt;
+            deadReckonHeading += -lastTurnCw * HiveConfig.TURN_RATE_RAD_PER_POWER_SEC * dt;
         }
         lastTurnCw = turnCw;
 

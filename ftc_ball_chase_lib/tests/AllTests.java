@@ -9,6 +9,7 @@ import org.firstinspires.ftc.teamcode.BallChaseFollower;
 import org.firstinspires.ftc.teamcode.BallHunt;
 import org.firstinspires.ftc.teamcode.BallMath;
 import org.firstinspires.ftc.teamcode.BallTracker;
+import org.firstinspires.ftc.teamcode.HiveConfig;
 import org.firstinspires.ftc.teamcode.wrapper.BallColor;
 import org.firstinspires.ftc.teamcode.wrapper.BallWrangler;
 import org.firstinspires.ftc.teamcode.wrapper.MecanumWrangler;
@@ -206,7 +207,7 @@ public class AllTests {
         check(conf != null && conf.size() == 2, "getConfidentResults ignores the class filter");
         check(gated != null && gated.size() == 1 && gated.get(0).classId == BallTracker.CLASS_RED,
                 "getGatedDetections honors the allowed-class filter");
-        rig.source.staleness = BallTracker.MAX_STALENESS_MS + 1;
+        rig.source.staleness = HiveConfig.MAX_STALENESS_MS + 1;
         check(t.getConfidentResults() == null && t.getGatedDetections() == null,
                 "both scan helpers go null on a stale frame");
         BallTracker.Sighting stale = t.update();
@@ -242,20 +243,20 @@ public class AllTests {
         check(!t.hasConfirmedTarget(), "no target yet -> not confirmed");
         check(t.getConfirmationFrames() == 3, "per-instance confirmation override in effect");
 
-        rig.source.dets = dets(red(0, -10, 0.9));
+        rig.source.feed(dets(red(0, -10, 0.9)));
         check(t.update() == null && !t.hasConfirmedTarget(), "frame 1 of 3: still confirming, update() holds null");
         check(t.getConfirmStreak() == 1, "streak 1 after the seed frame");
 
-        rig.source.dets = dets(red(1, -9, 0.9));
+        rig.source.feed(dets(red(1, -9, 0.9)));
         check(t.update() == null && !t.hasConfirmedTarget(), "frame 2 of 3: still confirming");
         check(t.getConfirmStreak() == 2, "streak 2");
 
-        rig.source.dets = dets(red(1, -9, 0.9));
+        rig.source.feed(dets(red(1, -9, 0.9)));
         BallTracker.Sighting s = t.update();
         check(s != null && !s.predicted && t.hasConfirmedTarget(), "frame 3 of 3: adopted + confirmed");
         check(s.classId == BallTracker.CLASS_RED, "confirmed lock is the red candidate");
 
-        rig.source.dets = dets();
+        rig.source.feed(dets());
         BallTracker.Sighting coast = t.update();
         check(coast != null && coast.predicted && t.hasConfirmedTarget(),
                 "confirmed lock coasts on last-known angles while briefly missing");
@@ -263,27 +264,27 @@ public class AllTests {
         RobotHarness rigB = new RobotHarness();
         BallTracker tB = rigB.newTracker();
         tB.requireConfirmation(3, 6.0);
-        rigB.source.dets = dets(red(0, -10, 0.9));
+        rigB.source.feed(dets(red(0, -10, 0.9)));
         tB.update();
         check(tB.getConfirmStreak() == 1, "scenario B: seeded on red");
-        rigB.source.dets = dets(new BallTracker.RawDet(BallTracker.CLASS_BLUE, 0, -6, 0.95, 0.3));
+        rigB.source.feed(dets(new BallTracker.RawDet(BallTracker.CLASS_BLUE, 0, -6, 0.95, 0.3)));
         check(tB.update() == null && tB.getConfirmStreak() == 0 && !tB.hasConfirmedTarget(),
                 "a different class during counting resets the streak");
 
         RobotHarness rigC = new RobotHarness();
         BallTracker tC = rigC.newTracker();
         tC.requireConfirmation(3, 6.0);
-        rigC.source.dets = dets(red(0, -10, 0.9));
+        rigC.source.feed(dets(red(0, -10, 0.9)));
         tC.update();
         check(tC.getConfirmStreak() == 1, "scenario C: seeded on red at tx=0");
-        rigC.source.dets = dets(red(12, -10, 0.9));
+        rigC.source.feed(dets(red(12, -10, 0.9)));
         check(tC.update() == null && tC.getConfirmStreak() == 0,
                 "an angular jump beyond CONFIRM_GATE_DEG resets the count");
 
         RobotHarness rigD = new RobotHarness();
         BallTracker tD = rigD.newTracker();
         check(!tD.hasConfirmedTarget(), "confirmation off: nothing confirmed before the first frame");
-        rigD.source.dets = dets(red(0, -10, 0.9));
+        rigD.source.feed(dets(red(0, -10, 0.9)));
         check(tD.update() != null && tD.hasConfirmedTarget(),
                 "confirmation off: first confident frame adopts and confirms immediately");
     }
@@ -312,8 +313,8 @@ public class AllTests {
 
     private static void testControllerSearchSweep() {
         System.out.println("controller: empty field ends after the search sweep");
-        double oldSweep = BallChaseController.SEARCH_SWEEP_DEG;
-        BallChaseController.SEARCH_SWEEP_DEG = 10;
+        double oldSweep = HiveConfig.SEARCH_SWEEP_DEG;
+        HiveConfig.SEARCH_SWEEP_DEG = 10;
         try {
             RobotHarness rig = new RobotHarness();
             MockMotor lf = new MockMotor(), rf = new MockMotor(), lb = new MockMotor(), rb = new MockMotor();
@@ -321,24 +322,24 @@ public class AllTests {
             c.setMaxPickups(1);
             c.start();
             c.update();
-            check(close(lf.power, BallChaseController.SEARCH_TURN)
-                    && close(rf.power, -BallChaseController.SEARCH_TURN)
-                    && close(lb.power, BallChaseController.SEARCH_TURN)
-                    && close(rb.power, -BallChaseController.SEARCH_TURN),
+            check(close(lf.power, HiveConfig.SEARCH_TURN)
+                    && close(rf.power, -HiveConfig.SEARCH_TURN)
+                    && close(lb.power, HiveConfig.SEARCH_TURN)
+                    && close(rb.power, -HiveConfig.SEARCH_TURN),
                     "search turn is a clockwise spin (LF/LB +, RF/RB -)");
             pumpController(c, 3000);
             check(c.isDone(), "empty field hits the dead-reckoned sweep cap -> DONE");
             check(c.getPickups() == 0, "no pickups on an empty field");
             check(lf.power == 0 && rf.power == 0 && lb.power == 0 && rb.power == 0, "motors zeroed at DONE");
         } finally {
-            BallChaseController.SEARCH_SWEEP_DEG = oldSweep;
+            HiveConfig.SEARCH_SWEEP_DEG = oldSweep;
         }
     }
 
     private static void testControllerChaseAndPickup() {
         System.out.println("controller: chase -> pickup -> done");
-        long oldDwell = BallChaseController.PICKUP_DWELL_MS;
-        BallChaseController.PICKUP_DWELL_MS = 20;
+        long oldDwell = HiveConfig.PICKUP_DWELL_MS;
+        HiveConfig.PICKUP_DWELL_MS = 20;
         try {
             RobotHarness rig = new RobotHarness();
             MockMotor lf = new MockMotor(), rf = new MockMotor(), lb = new MockMotor(), rb = new MockMotor();
@@ -349,7 +350,7 @@ public class AllTests {
             rig.source.dets = dets(red(3, 5, 0.9));
             c.update();
             check(c.getState() == BallChaseController.State.CHASING, "far on-axis ball -> CHASING");
-            check(intake.power == BallChaseController.INTAKE_POWER, "intake on while chasing");
+            check(intake.power == HiveConfig.INTAKE_POWER, "intake on while chasing");
             check(close(lf.power, 0.225) && close(rf.power, 0.075)
                     && close(lb.power, 0.225) && close(rb.power, 0.075),
                     String.format("chase mixes fwd 0.15 + turn 0.075 into the wheels (got lf=%.6f rf=%.6f lb=%.6f rb=%.6f)",
@@ -362,18 +363,18 @@ public class AllTests {
             check(c.isDone() && c.getPickups() == 1, "dwell -> 1 pickup -> DONE (maxPickups=1)");
             check(intake.power == 0, "intake off once done");
         } finally {
-            BallChaseController.PICKUP_DWELL_MS = oldDwell;
+            HiveConfig.PICKUP_DWELL_MS = oldDwell;
         }
     }
 
     private static void testControllerPredictedCoast() {
         System.out.println("controller: fresh-lock miss coasts, then picks up");
-        long oldCoast = BallChaseController.COAST_MS;
-        long oldDwell = BallChaseController.PICKUP_DWELL_MS;
-        long oldLost = BallTracker.LOCK_LOST_MS;
-        BallChaseController.COAST_MS = 40;
-        BallChaseController.PICKUP_DWELL_MS = 20;
-        BallTracker.LOCK_LOST_MS = 1000;
+        long oldCoast = HiveConfig.COAST_MS;
+        long oldDwell = HiveConfig.PICKUP_DWELL_MS;
+        long oldLost = HiveConfig.LOCK_LOST_MS;
+        HiveConfig.COAST_MS = 40;
+        HiveConfig.PICKUP_DWELL_MS = 20;
+        HiveConfig.LOCK_LOST_MS = 1000;
         try {
             RobotHarness rig = new RobotHarness();
             MockMotor lf = new MockMotor(), rf = new MockMotor(), lb = new MockMotor(), rb = new MockMotor();
@@ -383,30 +384,30 @@ public class AllTests {
             c.start();
             rig.source.dets = dets(red(1, 5, 0.9));
             c.update();
-            check(c.getState() == BallChaseController.State.CHASING && intake.power == BallChaseController.INTAKE_POWER,
+            check(c.getState() == BallChaseController.State.CHASING && intake.power == HiveConfig.INTAKE_POWER,
                     "locked onto a close-ish ball");
             rig.source.dets = dets();
             c.update();
             check(c.getState() == BallChaseController.State.COASTING, "fresh-lock miss -> COASTING");
-            check(close(lf.power, BallChaseController.COAST_POWER) && close(rf.power, BallChaseController.COAST_POWER)
-                    && close(lb.power, BallChaseController.COAST_POWER) && close(rb.power, BallChaseController.COAST_POWER),
+            check(close(lf.power, HiveConfig.COAST_POWER) && close(rf.power, HiveConfig.COAST_POWER)
+                    && close(lb.power, HiveConfig.COAST_POWER) && close(rb.power, HiveConfig.COAST_POWER),
                     "coast drives straight at COAST_POWER");
-            check(intake.power == BallChaseController.INTAKE_POWER, "intake stays on while coasting");
+            check(intake.power == HiveConfig.INTAKE_POWER, "intake stays on while coasting");
             pumpController(c, 1500);
             check(c.isDone() && c.getPickups() == 1, "coast -> pickup -> DONE with 1 pickup");
         } finally {
-            BallChaseController.COAST_MS = oldCoast;
-            BallChaseController.PICKUP_DWELL_MS = oldDwell;
-            BallTracker.LOCK_LOST_MS = oldLost;
+            HiveConfig.COAST_MS = oldCoast;
+            HiveConfig.PICKUP_DWELL_MS = oldDwell;
+            HiveConfig.LOCK_LOST_MS = oldLost;
         }
     }
 
     private static void testControllerPickupConfirmation() {
         System.out.println("controller: pickup-confirmation hook");
-        long oldDwell = BallChaseController.PICKUP_DWELL_MS;
-        long oldConfirm = BallChaseController.PICKUP_CONFIRM_MS;
-        BallChaseController.PICKUP_DWELL_MS = 20;
-        BallChaseController.PICKUP_CONFIRM_MS = 250;
+        long oldDwell = HiveConfig.PICKUP_DWELL_MS;
+        long oldConfirm = HiveConfig.PICKUP_CONFIRM_MS;
+        HiveConfig.PICKUP_DWELL_MS = 20;
+        HiveConfig.PICKUP_CONFIRM_MS = 250;
         try {
             // 1) confirmer says NO -> never credited, counted as a miss, moves on
             RobotHarness rig = new RobotHarness();
@@ -432,7 +433,7 @@ public class AllTests {
                       lb2 = new MockMotor(), rb2 = new MockMotor();
             MockMotor intake2 = new MockMotor();
             BallChaseController c2 = new BallChaseController(rig2.newTracker(), lf2, rf2, lb2, rb2, intake2);
-            BallChaseController.PICKUP_CONFIRM_MS = 250;
+            HiveConfig.PICKUP_CONFIRM_MS = 250;
             c2.setPickupConfirmer(() -> true);
             c2.setMaxPickups(1);
             c2.start();
@@ -443,19 +444,19 @@ public class AllTests {
             check(c2.isDone() && c2.getPickups() == 1 && c2.getFailedPickups() == 0,
                     "confirmed dwell -> 1 pickup -> DONE");
         } finally {
-            BallChaseController.PICKUP_DWELL_MS = oldDwell;
-            BallChaseController.PICKUP_CONFIRM_MS = oldConfirm;
+            HiveConfig.PICKUP_DWELL_MS = oldDwell;
+            HiveConfig.PICKUP_CONFIRM_MS = oldConfirm;
         }
     }
 
     private static void testFollowerSearchExhausts() {
         System.out.println("follower: empty field exhausts SEARCH_MAX_STEPS");
-        long oS = BallChaseFollower.SETTLE_MS, oC = BallChaseFollower.SCAN_MS, oT = BallChaseFollower.TURN_TIMEOUT_MS;
-        int oM = BallChaseFollower.SEARCH_MAX_STEPS;
-        BallChaseFollower.SETTLE_MS = 5;
-        BallChaseFollower.SCAN_MS = 5;
-        BallChaseFollower.TURN_TIMEOUT_MS = 20;
-        BallChaseFollower.SEARCH_MAX_STEPS = 2;
+        long oS = HiveConfig.SETTLE_MS, oC = HiveConfig.SCAN_MS, oT = HiveConfig.TURN_TIMEOUT_MS;
+        int oM = HiveConfig.SEARCH_MAX_STEPS;
+        HiveConfig.SETTLE_MS = 5;
+        HiveConfig.SCAN_MS = 5;
+        HiveConfig.TURN_TIMEOUT_MS = 20;
+        HiveConfig.SEARCH_MAX_STEPS = 2;
         try {
             RobotHarness rig = new RobotHarness();
             BallChaseFollower h = new BallChaseFollower(rig.follower, rig.newTracker(), null);
@@ -470,21 +471,21 @@ public class AllTests {
             check(rig.drivetrain.runDriveCalls > 0, "search turns flow through Pedro to the drivetrain");
             check(rig.drivetrain.breakCalls >= 1, "finish() broke following");
         } finally {
-            BallChaseFollower.SETTLE_MS = oS;
-            BallChaseFollower.SCAN_MS = oC;
-            BallChaseFollower.TURN_TIMEOUT_MS = oT;
-            BallChaseFollower.SEARCH_MAX_STEPS = oM;
+            HiveConfig.SETTLE_MS = oS;
+            HiveConfig.SCAN_MS = oC;
+            HiveConfig.TURN_TIMEOUT_MS = oT;
+            HiveConfig.SEARCH_MAX_STEPS = oM;
         }
     }
 
     private static void testFollowerChaseAndPickup() {
         System.out.println("follower: scan -> turn -> chase -> pickup -> done");
-        long oS = BallChaseFollower.SETTLE_MS, oC = BallChaseFollower.SCAN_MS, oT = BallChaseFollower.TURN_TIMEOUT_MS;
-        long oD = BallChaseFollower.PICKUP_DWELL_MS;
-        BallChaseFollower.SETTLE_MS = 5;
-        BallChaseFollower.SCAN_MS = 5;
-        BallChaseFollower.TURN_TIMEOUT_MS = 20;
-        BallChaseFollower.PICKUP_DWELL_MS = 20;
+        long oS = HiveConfig.SETTLE_MS, oC = HiveConfig.SCAN_MS, oT = HiveConfig.TURN_TIMEOUT_MS;
+        long oD = HiveConfig.PICKUP_DWELL_MS;
+        HiveConfig.SETTLE_MS = 5;
+        HiveConfig.SCAN_MS = 5;
+        HiveConfig.TURN_TIMEOUT_MS = 20;
+        HiveConfig.PICKUP_DWELL_MS = 20;
         try {
             RobotHarness rig = new RobotHarness();
             BallChaseFollower h = new BallChaseFollower(rig.follower, rig.newTracker(), null);
@@ -496,22 +497,22 @@ public class AllTests {
             check(h.isDone() && h.getPickups() == 1, "near in-view ball -> PICKUP -> DONE with 1");
             check(rig.drivetrain.breakCalls >= 1, "done path broke following");
         } finally {
-            BallChaseFollower.SETTLE_MS = oS;
-            BallChaseFollower.SCAN_MS = oC;
-            BallChaseFollower.TURN_TIMEOUT_MS = oT;
-            BallChaseFollower.PICKUP_DWELL_MS = oD;
+            HiveConfig.SETTLE_MS = oS;
+            HiveConfig.SCAN_MS = oC;
+            HiveConfig.TURN_TIMEOUT_MS = oT;
+            HiveConfig.PICKUP_DWELL_MS = oD;
         }
     }
 
     private static void testFollowerPickupConfirmation() {
         System.out.println("follower: pickup-confirmation hook");
-        long oS = BallChaseFollower.SETTLE_MS, oC = BallChaseFollower.SCAN_MS, oT = BallChaseFollower.TURN_TIMEOUT_MS;
-        long oD = BallChaseFollower.PICKUP_DWELL_MS, oV = BallChaseFollower.PICKUP_CONFIRM_MS;
-        BallChaseFollower.SETTLE_MS = 5;
-        BallChaseFollower.SCAN_MS = 5;
-        BallChaseFollower.TURN_TIMEOUT_MS = 20;
-        BallChaseFollower.PICKUP_DWELL_MS = 20;
-        BallChaseFollower.PICKUP_CONFIRM_MS = 250;
+        long oS = HiveConfig.SETTLE_MS, oC = HiveConfig.SCAN_MS, oT = HiveConfig.TURN_TIMEOUT_MS;
+        long oD = HiveConfig.PICKUP_DWELL_MS, oV = HiveConfig.PICKUP_CONFIRM_MS;
+        HiveConfig.SETTLE_MS = 5;
+        HiveConfig.SCAN_MS = 5;
+        HiveConfig.TURN_TIMEOUT_MS = 20;
+        HiveConfig.PICKUP_DWELL_MS = 20;
+        HiveConfig.PICKUP_CONFIRM_MS = 250;
         try {
             // 1) confirmer says NO -> never credited, counted as missed grabs, keeps hunting
             RobotHarness rig = new RobotHarness();
@@ -537,24 +538,24 @@ public class AllTests {
             check(h2.isDone() && h2.getPickups() == 1 && h2.getFailedPickups() == 0,
                     "confirmed dwell -> 1 pickup -> DONE");
         } finally {
-            BallChaseFollower.SETTLE_MS = oS;
-            BallChaseFollower.SCAN_MS = oC;
-            BallChaseFollower.TURN_TIMEOUT_MS = oT;
-            BallChaseFollower.PICKUP_DWELL_MS = oD;
-            BallChaseFollower.PICKUP_CONFIRM_MS = oV;
+            HiveConfig.SETTLE_MS = oS;
+            HiveConfig.SCAN_MS = oC;
+            HiveConfig.TURN_TIMEOUT_MS = oT;
+            HiveConfig.PICKUP_DWELL_MS = oD;
+            HiveConfig.PICKUP_CONFIRM_MS = oV;
         }
     }
 
     private static void testFollowerTravelTimeout() {
         System.out.println("follower: far ball plans a Pedro path, times out, re-plans, ends");
-        long oS = BallChaseFollower.SETTLE_MS, oC = BallChaseFollower.SCAN_MS, oT = BallChaseFollower.TURN_TIMEOUT_MS;
-        long oTv = BallChaseFollower.TRAVEL_TIMEOUT_MS;
-        int oM = BallChaseFollower.SEARCH_MAX_STEPS;
-        BallChaseFollower.SETTLE_MS = 5;
-        BallChaseFollower.SCAN_MS = 5;
-        BallChaseFollower.TURN_TIMEOUT_MS = 20;
-        BallChaseFollower.TRAVEL_TIMEOUT_MS = 30;
-        BallChaseFollower.SEARCH_MAX_STEPS = 1;
+        long oS = HiveConfig.SETTLE_MS, oC = HiveConfig.SCAN_MS, oT = HiveConfig.TURN_TIMEOUT_MS;
+        long oTv = HiveConfig.TRAVEL_TIMEOUT_MS;
+        int oM = HiveConfig.SEARCH_MAX_STEPS;
+        HiveConfig.SETTLE_MS = 5;
+        HiveConfig.SCAN_MS = 5;
+        HiveConfig.TURN_TIMEOUT_MS = 20;
+        HiveConfig.TRAVEL_TIMEOUT_MS = 30;
+        HiveConfig.SEARCH_MAX_STEPS = 1;
         try {
             RobotHarness rig = new RobotHarness();
             BallChaseFollower h = new BallChaseFollower(rig.follower, rig.newTracker(), null);
@@ -575,11 +576,11 @@ public class AllTests {
             check(h.getPickups() == 0, "no pickup made");
             check(rig.drivetrain.breakCalls >= 1, "travel timeout broke following");
         } finally {
-            BallChaseFollower.SETTLE_MS = oS;
-            BallChaseFollower.SCAN_MS = oC;
-            BallChaseFollower.TURN_TIMEOUT_MS = oT;
-            BallChaseFollower.TRAVEL_TIMEOUT_MS = oTv;
-            BallChaseFollower.SEARCH_MAX_STEPS = oM;
+            HiveConfig.SETTLE_MS = oS;
+            HiveConfig.SCAN_MS = oC;
+            HiveConfig.TURN_TIMEOUT_MS = oT;
+            HiveConfig.TRAVEL_TIMEOUT_MS = oTv;
+            HiveConfig.SEARCH_MAX_STEPS = oM;
         }
     }
 
@@ -663,14 +664,14 @@ public class AllTests {
         pumpWrangler(m, 1500);
         check(m.isDone(), "pose verb completed via the router");
         check(r.targets.size() == 1, "router received exactly one go-to");
-        check(close(r.lastPower, MecanumWrangler.GO_TO_POWER), "go-to used GO_TO_POWER");
+        check(close(r.lastPower, HiveConfig.GO_TO_POWER), "go-to used HiveConfig.GO_TO_POWER");
         check(r.stopCalls >= 1, "finish explicitly stops the router's go-to");
     }
 
     private static void testMecanumDeadReckonAndHeading() {
         System.out.println("MecanumWrangler: dead-reckon heading + HeadingSource");
-        double oldRate = MecanumWrangler.TURN_RATE_RAD_PER_POWER_SEC;
-        MecanumWrangler.TURN_RATE_RAD_PER_POWER_SEC = 1.0;
+        double oldRate = HiveConfig.TURN_RATE_RAD_PER_POWER_SEC;
+        HiveConfig.TURN_RATE_RAD_PER_POWER_SEC = 1.0;
         try {
             RobotHarness rig = new RobotHarness();
             MockMotor lf = new MockMotor(), rf = new MockMotor(), lb = new MockMotor(), rb = new MockMotor();
@@ -687,7 +688,7 @@ public class AllTests {
             Drv m2 = new Drv(rig2.newTracker(), lf2, rf2, lb2, rb2, (MecanumWrangler.HeadingSource) () -> 1.2);
             check(close(m2.headingNow(), 1.2), "HeadingSource supplies the heading reading");
         } finally {
-            MecanumWrangler.TURN_RATE_RAD_PER_POWER_SEC = oldRate;
+            HiveConfig.TURN_RATE_RAD_PER_POWER_SEC = oldRate;
         }
     }
 

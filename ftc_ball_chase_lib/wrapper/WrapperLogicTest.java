@@ -12,6 +12,7 @@ package org.firstinspires.ftc.teamcode.wrapper;
 
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import org.firstinspires.ftc.teamcode.BallTracker;
+import org.firstinspires.ftc.teamcode.HiveConfig;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -130,7 +131,7 @@ public class WrapperLogicTest extends BallWrangler {
         System.out.println("field projection");
         RobotPose origin = new RobotPose(0, 0, 0);
         double[] p = BallWrangler.projectBall(0, 0, origin);
-        double expected = BallTracker.CAM_H - BallTracker.BALL_H;
+        double expected = HiveConfig.CAM_H - HiveConfig.BALL_H;
         double dist = new BallTracker((Limelight3A) null).groundRange(0);
         check(p != null && Math.abs(p[0] - dist) < 0.01, String.format(
                 "forward-axis ball -> (%.2f, %.2f), expected dist %.2f", p == null ? -1 : p[0], p == null ? -1 : p[1], dist));
@@ -213,8 +214,8 @@ public class WrapperLogicTest extends BallWrangler {
 
     private static void testGather() {
         System.out.println("chain: grabUpTo / gather");
-        long oldDwell = BallWrangler.CHASE_PICKUP_MS;
-        BallWrangler.CHASE_PICKUP_MS = 20;              // shrink the pickup dwell for the test
+        long oldDwell = HiveConfig.PICKUP_DWELL_MS;
+        HiveConfig.PICKUP_DWELL_MS = 20;             // shrink the pickup dwell for the test
         try {
             WrapperLogicTest w = new WrapperLogicTest();
             w.addRed(-10, -8, 0.9, 0.3);                // far red
@@ -240,7 +241,7 @@ public class WrapperLogicTest extends BallWrangler {
             pump(f, 1000);
             check(f.isDone() && f.getPickups() == 0, "full intake short-circuits grabAll");
         } finally {
-            BallWrangler.CHASE_PICKUP_MS = oldDwell;
+            HiveConfig.PICKUP_DWELL_MS = oldDwell;
         }
     }
 
@@ -330,8 +331,10 @@ public class WrapperLogicTest extends BallWrangler {
     static final class ScriptedSource implements BallTracker.DetectionSource {
         List<BallTracker.RawDet> dets = new ArrayList<>();
         long staleness = 0;
+        long frame = 1;   // DetectionSource report id - bump per feed so the tracker sees distinct frames
         @Override public List<BallTracker.RawDet> latest() { return dets; }
         @Override public long stalenessMs() { return staleness; }
+        @Override public long frame() { return frame; }
     }
 
     private static List<BallTracker.RawDet> detsOf(BallTracker.RawDet... items) {
@@ -379,8 +382,8 @@ public class WrapperLogicTest extends BallWrangler {
 
     private static void testGatherOrElse() {
         System.out.println("chain: grabAll().orElse fires when nothing collected");
-        long oldDwell = BallWrangler.CHASE_PICKUP_MS;
-        BallWrangler.CHASE_PICKUP_MS = 20;
+        long oldDwell = HiveConfig.PICKUP_DWELL_MS;
+        HiveConfig.PICKUP_DWELL_MS = 20;
         try {
             WrapperLogicTest w = new WrapperLogicTest();
             w.grabAll().orElse(() -> w.backOff(0.1));
@@ -389,7 +392,7 @@ public class WrapperLogicTest extends BallWrangler {
             check(w.getPickups() == 0, "empty gather collected nothing");
             check(droveReverse(w), "grabAll().orElse ran when nothing was collected");
         } finally {
-            BallWrangler.CHASE_PICKUP_MS = oldDwell;
+            HiveConfig.PICKUP_DWELL_MS = oldDwell;
         }
     }
 
@@ -422,8 +425,8 @@ public class WrapperLogicTest extends BallWrangler {
 
     private static void testCrossChainPickups() {
         System.out.println("chain: then(other) pickup accounting stays on the source");
-        long oldDwell = BallWrangler.CHASE_PICKUP_MS;
-        BallWrangler.CHASE_PICKUP_MS = 20;
+        long oldDwell = HiveConfig.PICKUP_DWELL_MS;
+        HiveConfig.PICKUP_DWELL_MS = 20;
         try {
             WrapperLogicTest a = new WrapperLogicTest();
             WrapperLogicTest b = new WrapperLogicTest();
@@ -438,7 +441,7 @@ public class WrapperLogicTest extends BallWrangler {
                     + b.getPickups() + ")");
             check(a.getPickups() == 0, "receiver's own pickups stay 0");
         } finally {
-            BallWrangler.CHASE_PICKUP_MS = oldDwell;
+            HiveConfig.PICKUP_DWELL_MS = oldDwell;
         }
     }
 
@@ -490,7 +493,7 @@ public class WrapperLogicTest extends BallWrangler {
                 "getGatedDetections honors the allowed-class filter");
 
         t.reset();
-        src.staleness = BallTracker.MAX_STALENESS_MS + 1;
+        src.staleness = HiveConfig.MAX_STALENESS_MS + 1;
         check(t.getConfidentResults() == null && t.getGatedDetections() == null,
                 "both scan helpers go null past MAX_STALENESS_MS");
         check(t.update() == null, "stale frame with no lock yields nothing");

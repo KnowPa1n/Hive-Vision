@@ -30,6 +30,7 @@ jobs:
           curl -sSL -o lib/pedro_core.jar https://repo1.maven.org/maven2/com/pedropathing/core/2.1.2/core-2.1.2.jar
           curl -sSL -o a.tmp https://repo1.maven.org/maven2/com/pedropathing/ftc/2.1.2/ftc-2.1.2.aar
           unzip -p a.tmp classes.jar > lib/pedro_ftc.jar
+          curl -sSL -o lib/junit-jupiter-api.jar https://repo1.maven.org/maven2/org/junit/jupiter/junit-jupiter-api/5.10.2/junit-jupiter-api-5.10.2.jar
           rm -f a.tmp
           ls -la lib
 

@@ -72,7 +72,7 @@ public class BallHunt {
     /** Require a physical confirmation (beam break, intake current spike)
      *  before counting each pickup. Without one, pickups count after every
      *  dwell (legacy behavior). */
-    public BallHunt confirmWhen(BallChaseFollower.PickupConfirmer c) {
+    public BallHunt confirmWhen(PickupConfirmer c) {
         hunt.setPickupConfirmer(c);
         return this;
     }

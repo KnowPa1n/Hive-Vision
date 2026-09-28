@@ -107,7 +107,8 @@ and the ball's *center*, not its top.
 
 ## 5. First test: run the bench, don't write code
 
-Push `RobotTestBench` (it's already in `final/`) to the Control Hub. Select the
+Push `RobotTestBench` (`ftc_ball_chase_lib/tests/RobotTestBench.java` — a
+robot-side bench, `@Disabled` for match builds) to the Control Hub. Select the
 **DETECT** test with the left bumper and hold **A**:
 
 - D-pad picks the class filter (UP red, DOWN blue, LEFT red+blue, RIGHT all)

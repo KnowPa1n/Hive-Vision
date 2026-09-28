@@ -22,6 +22,7 @@ import com.pedropathing.follower.Follower;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import org.firstinspires.ftc.teamcode.BallTracker;
+import org.firstinspires.ftc.teamcode.PickupConfirmer;
 
 public class BallHunt extends PedroWrangler {
 
@@ -47,7 +48,7 @@ public class BallHunt extends PedroWrangler {
     @Override public BallHunt everything(){ super.everything(); return this; }
     @Override public BallHunt within(double seconds) { super.within(seconds); return this; }
     @Override public BallHunt clear()     { super.clear(); return this; }
-    @Override public BallHunt withPickupConfirmer(BallWrangler.PickupConfirmer c) { super.withPickupConfirmer(c); return this; }
+    @Override public BallHunt withPickupConfirmer(PickupConfirmer c) { super.withPickupConfirmer(c); return this; }
 
     /** Pick up n balls this hunt (n <= 0 = keep going until none are left). */
     public BallHunt collect(int n) {

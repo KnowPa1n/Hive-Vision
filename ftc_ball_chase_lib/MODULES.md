@@ -53,9 +53,10 @@ laptop for unit tests). `getConfidentResults()` is class-agnostic;
 
 **Conventions** — everything here is camera-relative (`tx`/`ty`,
 `groundRange()` in inches). Field projection lives in the pathing driver
-(`BallChaseFollower`, `wrapper/BallWrangler.projectBall`). All tunables are
-`public static` so a config system (e.g. Bylazar Configurables) or plain edits
-can drive them.
+(`BallChaseFollower`, `wrapper/BallWrangler.projectBall`). All tunables
+(`MIN_CONF`, `MAX_STALENESS_MS`, confirmation gates, `LOCK_GATE_DEG`,
+`LOCK_LOST_MS`) live in `final/HiveConfig.java` and are read at point of use,
+so a config system (e.g. Bylazar Configurables) or plain edits can drive them.
 
 **Usage**
 
@@ -127,7 +128,9 @@ Without a confirmer, every dwell is credited (legacy behavior). Timeout is
 - Motor directions (standard symmetric mecanum): `LF F`, `LB F`, `RF R`,
   `RB R` — apply `configureMecanumDirections()` unless your drivetrain is
   flipped.
-- All tunables are `public static` for config-system or in-place tuning.
+- All tunables live in `final/HiveConfig.java` (drive/turn/coast gains, search
+  sweep, pickup timing) and are read at point of use, so a config system or
+  plain edits can drive them.
 
 ---
 
