@@ -327,6 +327,9 @@ own footage if permission is unclear.
 and shows the Limelight 3A SSD detector tested in the real world. Contact/handles:
 Discord `@Destroyer` (handle `destroyer5782`).
 
+`demo/probiotix_api_robot_drive.mp4` was provided by **Team 16765 ProBotiX**
+(probotixbladel@gmail.com) from their robot testing — thank you for the footage.
+
 | Clip | Track |
 |------|-------|
 | [`demo/yolo_example_1.mp4`](demo/yolo_example_1.mp4) | YOLO example |
@@ -336,6 +339,7 @@ Discord `@Destroyer` (handle `destroyer5782`).
 | [`demo/control_hub_cv_example_2.mp4`](demo/control_hub_cv_example_2.mp4) | Control Hub/OpenCV example |
 | [`demo/cielab_demo.mp4`](demo/cielab_demo.mp4) | CIELAB (Lab track) example — own match capture |
 | [`demo/ssd_in_action.mp4`](demo/ssd_in_action.mp4) | Limelight 3A SSD-MobileNetV2 tested in the real world — recorded by Javi Nashat, Lazer Robotics 23286 |
+| [`demo/probiotix_api_robot_drive.mp4`](demo/probiotix_api_robot_drive.mp4) | Robot-drive footage — provided by Team 16765 ProBotiX |
 
 ### Automatic video previews
 
@@ -355,6 +359,8 @@ for the full-resolution clips with playback controls.
 ![CIELAB example](demo/previews/cielab_demo.gif)
 
 ![SSD-MobileNetV2 in action](demo/previews/ssd_in_action.gif)
+
+![Probiotix robot drive](demo/previews/probiotix_api_robot_drive.gif)
 
 ### Image samples
 
