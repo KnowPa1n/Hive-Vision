@@ -103,3 +103,11 @@ measure `CAM_H`, `BALL_H`, `CAM_PITCH_DEG`, and the offsets — plus the sign
 conventions for every frame — is in
 [Calibration & coordinates](../docs/calibration.md). Get those signs right
 once and the robot never drives backwards on you.
+
+## See the API in action
+
+[`demo/probiotix_api_robot_drive.mp4`](../demo/probiotix_api_robot_drive.mp4)
+shows a robot drive coded using these classes — footage provided by
+**Team 16765 ProBotiX** (probotixbladel@gmail.com); thank you for the footage.
+
+![API robot drive](../demo/previews/probiotix_api_robot_drive.gif)

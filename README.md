@@ -98,6 +98,9 @@ coprocessor); it never goes on a Limelight.
   [`lab/docs/lab_detector_report.md`](lab/docs/lab_detector_report.md); the CV track's own
   866-frame measurement is in
   [`cv/docs/cv_detector_report.md`](cv/docs/cv_detector_report.md)).
+- **Drop-in FTC API** — [`api/`](api/) has `ftc_ball_chase_lib`: a tracker
+  (`BallTracker`), a no-odometry chase state machine, a Pedro auto hybrid, and
+  the one-line `BallHunt` — `new BallHunt(follower, limelight, intake).reds().collect(2).go(this)`.
 
 ## Model details
 
@@ -327,7 +330,8 @@ own footage if permission is unclear.
 and shows the Limelight 3A SSD detector tested in the real world. Contact/handles:
 Discord `@Destroyer` (handle `destroyer5782`).
 
-`demo/probiotix_api_robot_drive.mp4` was provided by **Team 16765 ProBotiX**
+`demo/probiotix_api_robot_drive.mp4` shows a robot drive coded using the
+[ball-chase API](api/), and was provided by **Team 16765 ProBotiX**
 (probotixbladel@gmail.com) from their robot testing — thank you for the footage.
 
 | Clip | Track |
@@ -339,7 +343,7 @@ Discord `@Destroyer` (handle `destroyer5782`).
 | [`demo/control_hub_cv_example_2.mp4`](demo/control_hub_cv_example_2.mp4) | Control Hub/OpenCV example |
 | [`demo/cielab_demo.mp4`](demo/cielab_demo.mp4) | CIELAB (Lab track) example — own match capture |
 | [`demo/ssd_in_action.mp4`](demo/ssd_in_action.mp4) | Limelight 3A SSD-MobileNetV2 tested in the real world — recorded by Javi Nashat, Lazer Robotics 23286 |
-| [`demo/probiotix_api_robot_drive.mp4`](demo/probiotix_api_robot_drive.mp4) | Robot-drive footage — provided by Team 16765 ProBotiX |
+| [`demo/probiotix_api_robot_drive.mp4`](demo/probiotix_api_robot_drive.mp4) | Robot drive coded using the [API](api/) — provided by Team 16765 ProBotiX |
 
 ### Automatic video previews
 
